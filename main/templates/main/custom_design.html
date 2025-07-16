@@ -16,6 +16,26 @@
             <p class="lead text-center mb-5">
                 צרו עיצוב אישי עבור המוצרים שלכם באמצעות עורך הגרפיקה הפשוט שלנו
             </p>
+            
+            <!-- AI Design Generator Test -->
+            <div class="row justify-content-center mb-4">
+                <div class="col-md-6">
+                    <div class="card" style="border: 3px solid #667eea; background: #f8f9fa;">
+                        <div class="card-body">
+                            <h5 class="card-title text-center" style="color: #667eea;">
+                                <i class="fas fa-magic me-2"></i>🤖 עיצוב באמצעות AI
+                            </h5>
+                            <textarea id="aiDesignPromptTop" class="form-control mb-3" rows="3" 
+                                      placeholder="תאר את העיצוב שאתה רוצה... (לדוגמה: לוגו של כלב חמוד עם כתובת 'Best Friend')"
+                                      style="border: 2px solid #e9ecef; border-radius: 8px; font-size: 14px;"></textarea>
+                            <button class="btn btn-primary w-100" onclick="generateAIDesign()" 
+                                    style="background: linear-gradient(45deg, #667eea, #764ba2); border: none; padding: 10px;">
+                                <i class="fas fa-robot me-1"></i> צור עיצוב
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -30,14 +50,19 @@
                 </div>
                 
                 <!-- AI Design Generator -->
-                <div class="mb-4">
+                <div class="mb-4" style="background: #f8f9fa; padding: 15px; border-radius: 8px; border: 2px solid #667eea;">
                     <div class="ai-design-section">
-                        <h6><i class="fas fa-magic me-2"></i>עיצוב באמצעות AI</h6>
-                        <textarea id="aiDesignPrompt" class="form-control mb-3" rows="3" placeholder="תאר את העיצוב שאתה רוצה... (לדוגמה: לוגו של כלב חמוד עם כתובת 'Best Friend')"></textarea>
-                        <button class="btn btn-gradient btn-sm w-100" onclick="generateAIDesign()" id="generateBtn">
+                        <h6 style="color: #667eea; font-weight: bold; margin-bottom: 10px; font-size: 1.1em;">
+                            <i class="fas fa-magic me-2"></i>🤖 עיצוב באמצעות AI
+                        </h6>
+                        <textarea id="aiDesignPrompt" class="form-control mb-3" rows="3" 
+                                  placeholder="תאר את העיצוב שאתה רוצה... (לדוגמה: לוגו של כלב חמוד עם כתובת 'Best Friend')"
+                                  style="border: 2px solid #e9ecef; border-radius: 8px; font-size: 14px;"></textarea>
+                        <button class="btn btn-gradient btn-sm w-100" onclick="generateAIDesign()" id="generateBtn"
+                                style="background: linear-gradient(45deg, #667eea, #764ba2); color: white; border: none; padding: 10px;">
                             <i class="fas fa-robot me-1"></i> צור עיצוב
                         </button>
-                        <div id="aiStatus" class="mt-2 text-center" style="display: none;">
+                        <div id="aiStatus" class="mt-2 text-center" style="display: none; color: #667eea;">
                             <div class="spinner-border spinner-border-sm me-2" role="status"></div>
                             <span>יוצר עיצוב...</span>
                         </div>
@@ -525,7 +550,18 @@ function confirmSave() {
 // Generate AI Design
 async function generateAIDesign() {
     console.log('generateAIDesign called');
-    const prompt = document.getElementById('aiDesignPrompt').value.trim();
+    
+    // Get prompt from either textarea
+    const promptFromSidebar = document.getElementById('aiDesignPrompt');
+    const promptFromTop = document.getElementById('aiDesignPromptTop');
+    
+    let prompt = '';
+    if (promptFromSidebar && promptFromSidebar.value.trim()) {
+        prompt = promptFromSidebar.value.trim();
+    } else if (promptFromTop && promptFromTop.value.trim()) {
+        prompt = promptFromTop.value.trim();
+    }
+    
     const generateBtn = document.getElementById('generateBtn');
     const aiStatus = document.getElementById('aiStatus');
     
@@ -544,8 +580,8 @@ async function generateAIDesign() {
     console.log('Selected product:', selectedProduct);
     
     // Show loading
-    generateBtn.disabled = true;
-    aiStatus.style.display = 'block';
+    if (generateBtn) generateBtn.disabled = true;
+    if (aiStatus) aiStatus.style.display = 'block';
     
     try {
         const response = await fetch('/generate-ai-design/', {
@@ -580,8 +616,9 @@ async function generateAIDesign() {
             canvas.appendChild(imageElement);
             makeElementInteractive(imageElement);
             
-            // Clear the prompt
-            document.getElementById('aiDesignPrompt').value = '';
+            // Clear both prompts
+            if (promptFromSidebar) promptFromSidebar.value = '';
+            if (promptFromTop) promptFromTop.value = '';
             
             alert('עיצוב נוצר בהצלחה!');
         } else {
@@ -592,8 +629,8 @@ async function generateAIDesign() {
         alert('שגיאה בחיבור לשרת');
     } finally {
         // Hide loading
-        generateBtn.disabled = false;
-        aiStatus.style.display = 'none';
+        if (generateBtn) generateBtn.disabled = false;
+        if (aiStatus) aiStatus.style.display = 'none';
     }
 }
 
@@ -633,15 +670,35 @@ document.addEventListener('click', function(e) {
 // Initialize color indicator
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM loaded');
-    updateColorIndicator('#000000');
     
     // Check if AI section exists
     const aiSection = document.querySelector('.ai-design-section');
+    const aiTextarea = document.getElementById('aiDesignPrompt');
+    const aiButton = document.getElementById('generateBtn');
+    
     if (aiSection) {
         console.log('AI section found');
+        alert('AI section נמצא בדף!');
     } else {
         console.log('AI section NOT found');
+        alert('AI section לא נמצא!');
     }
+    
+    if (aiTextarea) {
+        console.log('AI textarea found');
+        aiTextarea.style.border = '3px solid red'; // הדגשה זמנית
+    } else {
+        console.log('AI textarea NOT found');
+    }
+    
+    if (aiButton) {
+        console.log('AI button found');
+        aiButton.style.background = 'red'; // הדגשה זמנית
+    } else {
+        console.log('AI button NOT found');
+    }
+    
+    updateColorIndicator('#000000');
     
     // Auto-select product if one is already selected
     const selectedProduct = document.querySelector('.product-option.selected');
