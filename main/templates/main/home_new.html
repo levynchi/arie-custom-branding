@@ -1,0 +1,182 @@
+{% extends 'main/base.html' %}
+
+{% block title %}דף הבית - אריה קאסטום מיתוגים{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-section">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-6">
+                <h1 class="display-4 fw-bold mb-4">מיתוג והדפסה מקצועית</h1>
+                <p class="lead mb-4">
+                    מתמחים בייצור והדפסה על מוצרי טקסטיל באיכות גבוהה. 
+                    חולצות, בגדי תינוקות, מגבות, חיתולים ועוד במגוון רחב של צבעים ועיצובים.
+                </p>
+                <div class="d-flex gap-3">
+                    <a href="{% url 'main:products' %}" class="btn btn-light btn-lg">
+                        <i class="fas fa-shopping-cart me-2"></i>
+                        צפה במוצרים
+                    </a>
+                    <a href="{% url 'main:business_quote' %}" class="btn btn-outline-light btn-lg">
+                        <i class="fas fa-briefcase me-2"></i>
+                        הצעת מחיר לעסקים
+                    </a>
+                </div>
+            </div>
+            <div class="col-lg-6 text-center">
+                <i class="fas fa-tshirt" style="font-size: 200px; opacity: 0.3;"></i>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section class="py-5">
+    <div class="container">
+        <div class="row text-center mb-5">
+            <div class="col-lg-8 mx-auto">
+                <h2 class="display-5 fw-bold mb-3">למה לבחור בנו?</h2>
+                <p class="lead">אנו מציעים שירות מקצועי ואיכותי עם דגש על יצירתיות ושביעות רצון הלקוח</p>
+            </div>
+        </div>
+        
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="card h-100 text-center p-4">
+                    <div class="card-body">
+                        <i class="fas fa-star text-warning mb-3" style="font-size: 3rem;"></i>
+                        <h5 class="card-title">איכות גבוהה</h5>
+                        <p class="card-text">מוצרים באיכות פרימיום עם הדפסה עמידה ומקצועית</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100 text-center p-4">
+                    <div class="card-body">
+                        <i class="fas fa-palette text-primary mb-3" style="font-size: 3rem;"></i>
+                        <h5 class="card-title">עיצוב אישי</h5>
+                        <p class="card-text">אפשרות לעיצוב אישי והתאמה מלאה לצרכים שלך</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100 text-center p-4">
+                    <div class="card-body">
+                        <i class="fas fa-shipping-fast text-success mb-3" style="font-size: 3rem;"></i>
+                        <h5 class="card-title">משלוח מהיר</h5>
+                        <p class="card-text">משלוח מהיר ואמין לכל רחבי הארץ</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Categories Section -->
+{% if categories %}
+<section class="py-5 bg-light">
+    <div class="container">
+        <div class="row mb-5">
+            <div class="col-12 text-center">
+                <h2 class="display-5 fw-bold mb-3">קטגוריות מוצרים</h2>
+                <p class="lead">מגוון רחב של מוצרי טקסטיל לכל צורך</p>
+            </div>
+        </div>
+        
+        <div class="row g-4">
+            {% for category in categories %}
+                <div class="col-md-3 col-sm-6">
+                    <div class="card h-100">
+                        {% if category.image %}
+                            <img src="{{ category.image.url }}" class="card-img-top category-image" alt="{{ category.name }}">
+                        {% else %}
+                            <div class="card-img-top category-image d-flex align-items-center justify-content-center bg-light">
+                                <i class="fas fa-image text-muted" style="font-size: 3rem;"></i>
+                            </div>
+                        {% endif %}
+                        <div class="card-body text-center">
+                            <h5 class="card-title">{{ category.name }}</h5>
+                            <p class="card-text">{{ category.description|truncatewords:10 }}</p>
+                            <a href="{% url 'main:category_products' category_slug=category.slug %}" class="btn btn-primary">
+                                צפה במוצרים
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Featured Products Section -->
+{% if featured_products %}
+<section class="py-5">
+    <div class="container">
+        <div class="row mb-5">
+            <div class="col-12 text-center">
+                <h2 class="display-5 fw-bold mb-3">מוצרים מומלצים</h2>
+                <p class="lead">מבחר המוצרים הפופולריים ביותר שלנו</p>
+            </div>
+        </div>
+        
+        <div class="row g-4">
+            {% for product in featured_products %}
+                <div class="col-md-4 col-sm-6">
+                    <div class="card h-100">
+                        {% if product.image %}
+                            <img src="{{ product.image.url }}" class="card-img-top product-image" alt="{{ product.name }}">
+                        {% else %}
+                            <div class="card-img-top product-image d-flex align-items-center justify-content-center bg-light">
+                                <i class="fas fa-image text-muted" style="font-size: 3rem;"></i>
+                            </div>
+                        {% endif %}
+                        <div class="card-body">
+                            <h5 class="card-title">{{ product.name }}</h5>
+                            <p class="card-text">{{ product.description|truncatewords:15 }}</p>
+                            <p class="card-text">
+                                <small class="text-muted">{{ product.category.name }}</small>
+                            </p>
+                        </div>
+                        <div class="card-footer bg-transparent">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="h5 text-primary mb-0">₪{{ product.price }}</span>
+                                <a href="{% url 'main:product_detail' product.slug %}" class="btn btn-primary">
+                                    פרטים נוספים
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+        
+        <div class="text-center mt-5">
+            <a href="{% url 'main:products' %}" class="btn btn-outline-primary btn-lg">
+                צפה בכל המוצרים
+            </a>
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- CTA Section -->
+<section class="py-5 bg-primary text-white">
+    <div class="container">
+        <div class="row text-center">
+            <div class="col-lg-8 mx-auto">
+                <h2 class="display-5 fw-bold mb-3">מעוניינים במיתוג עסקי?</h2>
+                <p class="lead mb-4">
+                    אנו מציעים שירותי מיתוג מקצועיים לעסקים בכמויות גדולות. 
+                    קבלו הצעת מחיר מותאמת אישית לצרכים שלכם.
+                </p>
+                <a href="{% url 'main:business_quote' %}" class="btn btn-light btn-lg">
+                    <i class="fas fa-briefcase me-2"></i>
+                    בקש הצעת מחיר
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

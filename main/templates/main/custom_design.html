@@ -1,0 +1,538 @@
+{% extends 'main/base.html' %}
+
+{% block title %}עיצוב אישי - אריה קאסטום מיתוגים{% endblock %}
+
+{% block extra_css %}
+{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="display-4 text-center mb-4">
+                <i class="fas fa-palette me-3"></i>
+                עיצוב בהתאמה אישית
+            </h1>
+            <p class="lead text-center mb-5">
+                צרו עיצוב אישי עבור המוצרים שלכם באמצעות עורך הגרפיקה הפשוט שלנו
+            </p>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Toolbar -->
+        <div class="col-md-3">
+            <div class="toolbar">
+                <h5 class="mb-3">כלי עיצוב</h5>
+                <div class="alert alert-info alert-sm mb-3" style="font-size: 0.8rem; padding: 8px;">
+                    <i class="fas fa-info-circle me-1"></i>
+                    לחץ על טקסט לעריכה, על רקע האלמנט לגרירה
+                </div>
+                
+                <!-- Product Selection -->
+                <div class="product-selection mb-3">
+                    <h6>בחר מוצר לעיצוב</h6>
+                    <div class="product-grid" id="productGrid">
+                        {% for product in products %}
+                        <div class="product-option{% if selected_product and selected_product.id == product.id %} selected{% endif %}" data-product-id="{{ product.id }}" data-product-image="{% if product.image %}{{ product.image.url }}{% endif %}" onclick="selectProduct(this)">
+                            {% if product.image %}
+                                <img src="{{ product.image.url }}" alt="{{ product.name }}">
+                            {% else %}
+                                <div style="width: 80px; height: 80px; background-color: #f0f0f0; border-radius: 4px; display: flex; align-items: center; justify-content: center; margin-bottom: 5px;">
+                                    <i class="fas fa-image" style="color: #ccc; font-size: 24px;"></i>
+                                </div>
+                            {% endif %}
+                            <div class="product-name">{{ product.name }}</div>
+                            <div class="product-price">₪{{ product.price }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <!-- Add Text -->
+                <div class="mb-3">
+                    <button class="btn btn-primary btn-sm w-100" onclick="addText()">
+                        <i class="fas fa-font me-1"></i> הוסף טקסט
+                    </button>
+                </div>
+                
+                <!-- Add Image -->
+                <div class="mb-3">
+                    <button class="btn btn-success btn-sm w-100" onclick="document.getElementById('imageInput').click()">
+                        <i class="fas fa-image me-1"></i> הוסף תמונה
+                    </button>
+                    <input type="file" id="imageInput" accept="image/*" style="display: none" onchange="addImage(event)">
+                </div>
+                
+                <!-- Add Emoji -->
+                <div class="mb-3">
+                    <button class="btn btn-warning btn-sm w-100" onclick="toggleEmojiPicker()">
+                        <i class="fas fa-smile me-1"></i> הוסף סמל
+                    </button>
+                    <div id="emojiPicker" class="emoji-picker" style="display: none;">
+                        <span class="emoji-item" onclick="addEmoji('😊')">😊</span>
+                        <span class="emoji-item" onclick="addEmoji('❤️')">❤️</span>
+                        <span class="emoji-item" onclick="addEmoji('👍')">👍</span>
+                        <span class="emoji-item" onclick="addEmoji('🎉')">🎉</span>
+                        <span class="emoji-item" onclick="addEmoji('🌟')">🌟</span>
+                        <span class="emoji-item" onclick="addEmoji('🔥')">🔥</span>
+                        <span class="emoji-item" onclick="addEmoji('💯')">💯</span>
+                        <span class="emoji-item" onclick="addEmoji('🚀')">🚀</span>
+                        <span class="emoji-item" onclick="addEmoji('🎯')">🎯</span>
+                        <span class="emoji-item" onclick="addEmoji('💪')">💪</span>
+                        <span class="emoji-item" onclick="addEmoji('🏆')">🏆</span>
+                        <span class="emoji-item" onclick="addEmoji('🎨')">🎨</span>
+                    </div>
+                </div>
+                
+                <!-- Colors -->
+                <div class="mb-3">
+                    <h6>צבעים</h6>
+                    <div class="current-color-indicator">
+                        <div class="current-color-swatch" id="currentColorSwatch"></div>
+                        <span id="currentColorText">שחור</span>
+                    </div>
+                    <div class="d-flex flex-wrap">
+                        <input type="color" class="color-picker selected" value="#000000" onchange="changeColor(this.value)" onclick="selectColorPicker(this)" title="שחור">
+                        <input type="color" class="color-picker" value="#ff0000" onchange="changeColor(this.value)" onclick="selectColorPicker(this)" title="אדום">
+                        <input type="color" class="color-picker" value="#00ff00" onchange="changeColor(this.value)" onclick="selectColorPicker(this)" title="ירוק">
+                        <input type="color" class="color-picker" value="#0000ff" onchange="changeColor(this.value)" onclick="selectColorPicker(this)" title="כחול">
+                        <input type="color" class="color-picker" value="#ffff00" onchange="changeColor(this.value)" onclick="selectColorPicker(this)" title="צהוב">
+                        <input type="color" class="color-picker" value="#ff00ff" onchange="changeColor(this.value)" onclick="selectColorPicker(this)" title="סגול">
+                        <input type="color" class="color-picker" value="#00ffff" onchange="changeColor(this.value)" onclick="selectColorPicker(this)" title="תכלת">
+                        <input type="color" class="color-picker" value="#ffffff" onchange="changeColor(this.value)" onclick="selectColorPicker(this)" title="לבן">
+                    </div>
+                </div>
+                
+                <!-- Font Size -->
+                <div class="mb-3">
+                    <h6>גודל גופן</h6>
+                    <div class="size-control">
+                        <input type="range" id="fontSizeSlider" min="12" max="72" value="24" oninput="changeFontSize(this.value)">
+                        <span id="fontSizeValue">24px</span>
+                    </div>
+                </div>
+                
+                <!-- Actions -->
+                <div class="mb-3">
+                    <button class="btn btn-danger btn-sm w-100 mb-2" onclick="clearCanvas()">
+                        <i class="fas fa-trash me-1"></i> נקה הכל
+                    </button>
+                    <button class="btn btn-info btn-sm w-100" onclick="saveDesign()">
+                        <i class="fas fa-save me-1"></i> שמור עיצוב
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Design Canvas -->
+        <div class="col-md-9">
+            <div class="product-preview mb-3">
+                <div class="design-canvas" id="designCanvas">
+                    <div class="canvas-overlay" id="canvasOverlay"></div>
+                    <div class="text-center text-muted" id="placeholderText" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10;">
+                        <i class="fas fa-tshirt" style="font-size: 100px; opacity: 0.3;"></i>
+                        <p>בחר מוצר והתחל לעצב</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-center">
+                <h5>תצוגה מקדימה של העיצוב</h5>
+                <p class="text-muted">
+                    בחר מוצר מהרשימה למעלה, ואז גרור ושחרר אלמנטים לתוך אזור העיצוב<br>
+                    <small>💡 לחץ על טקסט כדי לערוך, לחץ על רקע כדי לגרור</small>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Save Modal -->
+<div class="modal fade" id="saveModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">שמירת עיצוב</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="designName" class="form-label">שם העיצוב</label>
+                    <input type="text" class="form-control" id="designName" placeholder="הכנס שם לעיצוב">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ביטול</button>
+                <button type="button" class="btn btn-primary" onclick="confirmSave()">שמור</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let selectedElement = null;
+let elementCounter = 0;
+let isDragging = false;
+let dragOffset = { x: 0, y: 0 };
+let selectedProduct = null;
+
+// Select product as background
+function selectProduct(productElement) {
+    // Remove selection from all products
+    document.querySelectorAll('.product-option').forEach(option => {
+        option.classList.remove('selected');
+    });
+    
+    // Add selection to clicked product
+    productElement.classList.add('selected');
+    
+    // Get product data
+    const productId = productElement.dataset.productId;
+    const productImage = productElement.dataset.productImage;
+    selectedProduct = { id: productId, image: productImage };
+    
+    // Update canvas background
+    const canvas = document.getElementById('designCanvas');
+    const placeholderText = document.getElementById('placeholderText');
+    
+    if (productImage && productImage.trim() !== '') {
+        canvas.style.backgroundImage = `url('${productImage}')`;
+        canvas.classList.add('with-product');
+        placeholderText.style.display = 'none';
+    } else {
+        // Show placeholder for products without image
+        canvas.style.backgroundImage = 'none';
+        canvas.classList.remove('with-product');
+        placeholderText.style.display = 'block';
+        placeholderText.innerHTML = `
+            <i class="fas fa-tshirt" style="font-size: 100px; opacity: 0.3;"></i>
+            <p>נבחר מוצר: ${productElement.querySelector('.product-name').textContent}</p>
+            <p style="font-size: 0.9em; color: #666;">התחל לעצב על המוצר</p>
+        `;
+    }
+}
+
+// Add text element
+function addText() {
+    const canvas = document.getElementById('designCanvas');
+    const textElement = document.createElement('div');
+    textElement.className = 'design-element text-element';
+    textElement.id = 'element_' + (++elementCounter);
+    textElement.innerHTML = `
+        <span contenteditable="true" style="outline: none;">טקסט חדש</span>
+        <button class="delete-btn" onclick="deleteElement('${textElement.id}')">&times;</button>
+    `;
+    textElement.style.left = '50px';
+    textElement.style.top = '50px';
+    textElement.style.fontSize = '24px';
+    textElement.style.color = '#000000';
+    
+    canvas.appendChild(textElement);
+    makeElementInteractive(textElement);
+}
+
+// Add image element
+function addImage(event) {
+    const file = event.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const canvas = document.getElementById('designCanvas');
+            const imageElement = document.createElement('div');
+            imageElement.className = 'design-element';
+            imageElement.id = 'element_' + (++elementCounter);
+            imageElement.innerHTML = `
+                <img src="${e.target.result}" class="image-element" style="width: 100px; height: 100px;">
+                <button class="delete-btn" onclick="deleteElement('${imageElement.id}')">&times;</button>
+            `;
+            imageElement.style.left = '100px';
+            imageElement.style.top = '100px';
+            
+            canvas.appendChild(imageElement);
+            makeElementInteractive(imageElement);
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+// Add emoji element
+function addEmoji(emoji) {
+    const canvas = document.getElementById('designCanvas');
+    const emojiElement = document.createElement('div');
+    emojiElement.className = 'design-element text-element';
+    emojiElement.id = 'element_' + (++elementCounter);
+    emojiElement.innerHTML = `
+        <span style="font-size: 48px; line-height: 1;">${emoji}</span>
+        <button class="delete-btn" onclick="deleteElement('${emojiElement.id}')">&times;</button>
+    `;
+    emojiElement.style.left = '150px';
+    emojiElement.style.top = '150px';
+    
+    canvas.appendChild(emojiElement);
+    makeElementInteractive(emojiElement);
+    
+    // Hide emoji picker
+    document.getElementById('emojiPicker').style.display = 'none';
+}
+
+// Toggle emoji picker
+function toggleEmojiPicker() {
+    const picker = document.getElementById('emojiPicker');
+    picker.style.display = picker.style.display === 'none' ? 'block' : 'none';
+}
+
+// Make element interactive
+function makeElementInteractive(element) {
+    element.addEventListener('mousedown', startDrag);
+    element.addEventListener('click', selectElement);
+    
+    // Special handling for text elements
+    if (element.classList.contains('text-element')) {
+        const textSpan = element.querySelector('span[contenteditable]');
+        if (textSpan) {
+            textSpan.addEventListener('click', function(e) {
+                e.stopPropagation();
+                // Focus on the text for editing
+                this.focus();
+            });
+            
+            textSpan.addEventListener('mousedown', function(e) {
+                e.stopPropagation();
+            });
+            
+            textSpan.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.blur();
+                }
+            });
+        }
+    }
+}
+
+// Start dragging
+function startDrag(e) {
+    if (e.target.classList.contains('delete-btn')) return;
+    if (e.target.hasAttribute('contenteditable')) return; // Don't drag when editing text
+    
+    isDragging = true;
+    selectedElement = e.currentTarget;
+    selectElement(e);
+    
+    const rect = selectedElement.getBoundingClientRect();
+    const canvasRect = document.getElementById('designCanvas').getBoundingClientRect();
+    
+    dragOffset.x = e.clientX - rect.left;
+    dragOffset.y = e.clientY - rect.top;
+    
+    selectedElement.classList.add('dragging');
+    
+    document.addEventListener('mousemove', drag);
+    document.addEventListener('mouseup', stopDrag);
+    
+    e.preventDefault();
+}
+
+// Drag element
+function drag(e) {
+    if (!isDragging || !selectedElement) return;
+    
+    const canvasRect = document.getElementById('designCanvas').getBoundingClientRect();
+    const x = e.clientX - canvasRect.left - dragOffset.x;
+    const y = e.clientY - canvasRect.top - dragOffset.y;
+    
+    selectedElement.style.left = Math.max(0, Math.min(canvasRect.width - selectedElement.offsetWidth, x)) + 'px';
+    selectedElement.style.top = Math.max(0, Math.min(canvasRect.height - selectedElement.offsetHeight, y)) + 'px';
+}
+
+// Stop dragging
+function stopDrag() {
+    if (selectedElement) {
+        selectedElement.classList.remove('dragging');
+    }
+    isDragging = false;
+    document.removeEventListener('mousemove', drag);
+    document.removeEventListener('mouseup', stopDrag);
+}
+
+// Select element
+function selectElement(e) {
+    if (e.target.classList.contains('delete-btn')) return;
+    if (e.target.hasAttribute('contenteditable')) return; // Don't select when editing text
+    
+    // Remove previous selection
+    document.querySelectorAll('.design-element').forEach(el => {
+        el.classList.remove('selected');
+    });
+    
+    // Add selection to current element
+    const element = e.currentTarget;
+    element.classList.add('selected');
+    selectedElement = element;
+    
+    e.stopPropagation();
+}
+
+// Delete element
+function deleteElement(elementId) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.remove();
+        selectedElement = null;
+    }
+}
+
+// Select color picker
+function selectColorPicker(picker) {
+    // Remove selected class from all color pickers
+    document.querySelectorAll('.color-picker').forEach(cp => {
+        cp.classList.remove('selected');
+    });
+    
+    // Add selected class to clicked picker
+    picker.classList.add('selected');
+    
+    // Update current color indicator
+    updateColorIndicator(picker.value);
+}
+
+// Update color indicator
+function updateColorIndicator(color) {
+    const swatch = document.getElementById('currentColorSwatch');
+    const text = document.getElementById('currentColorText');
+    
+    swatch.style.backgroundColor = color;
+    
+    // Convert hex to color name (basic colors)
+    const colorNames = {
+        '#000000': 'שחור',
+        '#ff0000': 'אדום',
+        '#00ff00': 'ירוק',
+        '#0000ff': 'כחול',
+        '#ffff00': 'צהוב',
+        '#ff00ff': 'סגול',
+        '#00ffff': 'תכלת',
+        '#ffffff': 'לבן'
+    };
+    
+    text.textContent = colorNames[color.toLowerCase()] || color.toUpperCase();
+}
+
+// Change color
+function changeColor(color) {
+    updateColorIndicator(color);
+    
+    if (selectedElement) {
+        const textSpan = selectedElement.querySelector('span');
+        if (textSpan) {
+            textSpan.style.color = color;
+        }
+    }
+}
+
+// Change font size
+function changeFontSize(size) {
+    document.getElementById('fontSizeValue').textContent = size + 'px';
+    if (selectedElement) {
+        const textSpan = selectedElement.querySelector('span');
+        if (textSpan) {
+            textSpan.style.fontSize = size + 'px';
+        }
+    }
+}
+
+// Clear canvas
+function clearCanvas() {
+    if (confirm('האם אתה בטוח שאתה רוצה לנקות את כל העיצוב?')) {
+        const canvas = document.getElementById('designCanvas');
+        const elements = canvas.querySelectorAll('.design-element');
+        elements.forEach(el => el.remove());
+        selectedElement = null;
+    }
+}
+
+// Save design
+function saveDesign() {
+    const modal = new bootstrap.Modal(document.getElementById('saveModal'));
+    modal.show();
+}
+
+// Confirm save
+function confirmSave() {
+    const designName = document.getElementById('designName').value || 'עיצוב ללא שם';
+    const canvas = document.getElementById('designCanvas');
+    const elements = Array.from(canvas.querySelectorAll('.design-element'));
+    
+    const designData = {
+        product: selectedProduct,
+        elements: elements.map(el => ({
+            id: el.id,
+            type: el.classList.contains('text-element') ? 'text' : 'image',
+            left: el.style.left,
+            top: el.style.top,
+            content: el.innerHTML,
+            styles: {
+                fontSize: el.style.fontSize,
+                color: el.style.color
+            }
+        }))
+    };
+    
+    fetch('{% url "main:save_design" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            name: designName,
+            design_data: designData
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('העיצוב נשמר בהצלחה!');
+            const modal = bootstrap.Modal.getInstance(document.getElementById('saveModal'));
+            modal.hide();
+        } else {
+            alert('שגיאה בשמירת העיצוב: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('שגיאה בשמירת העיצוב');
+    });
+}
+
+// Deselect when clicking on canvas
+document.getElementById('designCanvas').addEventListener('click', function(e) {
+    if (e.target === this) {
+        document.querySelectorAll('.design-element').forEach(el => {
+            el.classList.remove('selected');
+        });
+        selectedElement = null;
+    }
+});
+
+// Hide emoji picker when clicking elsewhere
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.emoji-picker') && !e.target.closest('button')) {
+        document.getElementById('emojiPicker').style.display = 'none';
+    }
+});
+
+// Initialize color indicator
+document.addEventListener('DOMContentLoaded', function() {
+    updateColorIndicator('#000000');
+    
+    // Auto-select product if one is already selected
+    const selectedProduct = document.querySelector('.product-option.selected');
+    if (selectedProduct) {
+        selectProduct(selectedProduct);
+    }
+});
+</script>
+{% endblock %}

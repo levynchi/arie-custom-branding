@@ -1,0 +1,227 @@
+{% extends 'main/base.html' %}
+{% load static %}
+
+{% block title %}{{ category.name }} - אריה קאסטום מיתוגים{% endblock %}
+
+{% block extra_css %}
+<meta name="description" content="מוצרי {{ category.name }} באיכות גבוהה עם אפשרות עיצוב אישי ומיתוג מקצועי. {{ products.paginator.count }} מוצרים זמינים בקטגוריה {{ category.name }}.">
+<meta name="keywords" content="{{ category.name }}, מיתוג, הדפסה, עיצוב אישי, טקסטיל, אריה קאסטום">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid category-header">
+    <div class="container">
+        <div class="row">
+            <div class="col-12">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="{% url 'main:home' %}">בית</a></li>
+                        <li class="breadcrumb-item"><a href="{% url 'main:products' %}">מוצרים</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">{{ category.name }}</li>
+                    </ol>
+                </nav>
+                
+                <div class="text-center">
+                    <div class="category-icon">
+                        {% if category.slug == 'shirts' %}
+                            <i class="fas fa-tshirt"></i>
+                        {% elif category.slug == 'sweatshirts' %}
+                            <i class="fas fa-user-tie"></i>
+                        {% elif category.slug == 'hats' %}
+                            <i class="fas fa-hat-cowboy"></i>
+                        {% elif category.slug == 'bags' %}
+                            <i class="fas fa-shopping-bag"></i>
+                        {% elif category.slug == 'accessories' %}
+                            <i class="fas fa-gem"></i>
+                        {% else %}
+                            <i class="fas fa-folder"></i>
+                        {% endif %}
+                    </div>
+                    
+                    <h1>{{ category.name }}</h1>
+                    <p class="lead mb-0">{{ products.paginator.count }} מוצרים זמינים</p>
+                </div>
+                
+                {% if category.description %}
+                <div class="category-description mt-4">
+                    <i class="fas fa-info-circle me-2"></i>
+                    {{ category.description }}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container my-5">
+    <!-- Search and Filter Bar -->
+    <div class="search-filter-bar">
+        <div class="row">
+            <div class="col-md-8">
+                <form method="get" class="d-flex">
+                    <input type="text" name="search" class="form-control me-2" 
+                           placeholder="חפש במוצרי {{ category.name }}..." 
+                           value="{{ search_query|default:'' }}">
+                    <button type="submit" class="btn btn-outline-primary">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </form>
+            </div>
+            <div class="col-md-4">
+                <form method="get" class="d-flex">
+                    {% if search_query %}
+                        <input type="hidden" name="search" value="{{ search_query }}">
+                    {% endif %}
+                    <select name="fabric" class="form-select me-2" onchange="this.form.submit()">
+                        <option value="">כל סוגי הבד</option>
+                        {% for fabric in fabric_types %}
+                            <option value="{{ fabric }}" {% if fabric == selected_fabric %}selected{% endif %}>
+                                {{ fabric }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Products Grid -->
+    {% if products %}
+        <div class="row">
+            {% for product in products %}
+                <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+                    <div class="card product-card h-100">
+                        <div class="position-relative">
+                            {% if product.get_main_image %}
+                                <img src="{{ product.get_main_image.image.url }}" 
+                                     class="card-img-top product-image" 
+                                     alt="{{ product.name }}">
+                            {% else %}
+                                <div class="card-img-top d-flex align-items-center justify-content-center bg-light product-image">
+                                    <i class="fas fa-image fa-3x text-muted"></i>
+                                </div>
+                            {% endif %}
+                            
+                            {% if product.is_featured %}
+                                <span class="product-badge">מומלץ</span>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="card-body d-flex flex-column">
+                            <h5 class="card-title">{{ product.name }}</h5>
+                            <p class="card-text text-muted small flex-grow-1">
+                                {{ product.description|truncatewords:15 }}
+                            </p>
+                            
+                            <div class="mt-auto">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="badge bg-secondary">{{ product.fabric_type }}</span>
+                                    <small class="text-muted">{{ product.category.name }}</small>
+                                </div>
+                                
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="h5 mb-0 text-primary">₪{{ product.price }}</span>
+                                    <div class="btn-group" role="group">
+                                        <a href="{% url 'main:custom_design' %}?product={{ product.id }}" 
+                                           class="btn btn-sm btn-outline-primary" title="עיצוב אישי">
+                                            <i class="fas fa-paint-brush"></i>
+                                        </a>
+                                        <button class="btn btn-sm btn-primary" title="הוסף לסל">
+                                            <i class="fas fa-cart-plus"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        {% if products.has_other_pages %}
+            <nav aria-label="ניווט דפים">
+                <ul class="pagination justify-content-center">
+                    {% if products.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ products.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if selected_fabric %}&fabric={{ selected_fabric }}{% endif %}">
+                                <i class="fas fa-chevron-right"></i>
+                            </a>
+                        </li>
+                    {% endif %}
+                    
+                    {% for num in products.paginator.page_range %}
+                        {% if products.number == num %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ num }}</span>
+                            </li>
+                        {% elif num > products.number|add:'-3' and num < products.number|add:'3' %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if selected_fabric %}&fabric={{ selected_fabric }}{% endif %}">{{ num }}</a>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if products.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ products.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if selected_fabric %}&fabric={{ selected_fabric }}{% endif %}">
+                                <i class="fas fa-chevron-left"></i>
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        {% endif %}
+    {% else %}
+        <div class="empty-state">
+            <i class="fas fa-search"></i>
+            <h3>לא נמצאו מוצרים</h3>
+            <p>
+                {% if search_query %}
+                    לא נמצאו מוצרים עבור החיפוש "{{ search_query }}" בקטגוריה {{ category.name }}
+                {% else %}
+                    עדיין אין מוצרים בקטגוריה {{ category.name }}
+                {% endif %}
+            </p>
+            <a href="{% url 'main:products' %}" class="btn btn-primary">
+                <i class="fas fa-arrow-right me-2"></i>
+                חזור לכל המוצרים
+            </a>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Quick Actions -->
+<div class="quick-actions">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <div class="card quick-action-card border-0 bg-primary text-white">
+                    <div class="card-body text-center">
+                        <i class="fas fa-paint-brush fa-3x mb-3"></i>
+                        <h5>עיצוב אישי</h5>
+                        <p class="mb-3">עצב את המוצר מקטגוריה {{ category.name }} בעצמך</p>
+                        <a href="{% url 'main:custom_design' %}" class="btn btn-light">
+                            <i class="fas fa-palette me-2"></i>
+                            התחל לעצב
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <div class="card quick-action-card border-0 bg-success text-white">
+                    <div class="card-body text-center">
+                        <i class="fas fa-building fa-3x mb-3"></i>
+                        <h5>הצעת מחיר לעסקים</h5>
+                        <p class="mb-3">קבל הצעת מחיר מותאמת למוצרי {{ category.name }}</p>
+                        <a href="{% url 'main:business_quote' %}" class="btn btn-light">
+                            <i class="fas fa-calculator me-2"></i>
+                            בקש הצעה
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

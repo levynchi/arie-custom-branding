@@ -1,0 +1,213 @@
+{% extends 'main/base.html' %}
+{% load static %}
+
+{% block title %}דף הבית - אריה קאסטום מיתוגים{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-section-modern">
+    <div class="container">
+        <div class="row align-items-center min-vh-75">
+            <div class="col-lg-6">
+                <div class="hero-content">
+                    <h1 class="hero-title">
+                        <span class="gradient-text">מיתוג והדפסה</span>
+                        <br>מקצועית
+                    </h1>
+                    <p class="hero-subtitle">
+                        מתמחים בייצור והדפסה על מוצרי טקסטיל באיכות גבוהה
+                    </p>
+                    <div class="hero-buttons">
+                        <a href="{% url 'main:products' %}" class="btn btn-primary btn-lg me-3">
+                            <i class="fas fa-shopping-cart me-2"></i>
+                            צפה במוצרים
+                        </a>
+                        <a href="{% url 'main:custom_design' %}" class="btn btn-outline-primary btn-lg">
+                            <i class="fas fa-palette me-2"></i>
+                            עצב בעצמך
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="hero-image">
+                    <div class="floating-cards">
+                        <div class="floating-card card-1">
+                            <i class="fas fa-tshirt"></i>
+                            <span>חולצות</span>
+                        </div>
+                        <div class="floating-card card-2">
+                            <i class="fas fa-hat-cowboy"></i>
+                            <span>כובעים</span>
+                        </div>
+                        <div class="floating-card card-3">
+                            <i class="fas fa-shopping-bag"></i>
+                            <span>תיקים</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Categories Section -->
+<section class="categories-section">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="section-title">הקטגוריות שלנו</h2>
+            <p class="section-subtitle">בחר מתוך מגוון רחב של מוצרי טקסטיל איכותיים</p>
+        </div>
+        
+        <div class="row g-4">
+            {% for category in categories %}
+            <div class="col-lg-4 col-md-6">
+                <div class="category-card">
+                    <div class="category-image">
+                        {% if category.image %}
+                            <img src="{{ category.image.url }}" alt="{{ category.name }}">
+                        {% else %}
+                            <div class="category-placeholder">
+                                {% if category.slug == 'shirts' %}
+                                    <i class="fas fa-tshirt"></i>
+                                {% elif category.slug == 'sweatshirts' %}
+                                    <i class="fas fa-user-tie"></i>
+                                {% elif category.slug == 'hats' %}
+                                    <i class="fas fa-hat-cowboy"></i>
+                                {% elif category.slug == 'bags' %}
+                                    <i class="fas fa-shopping-bag"></i>
+                                {% elif category.slug == 'accessories' %}
+                                    <i class="fas fa-gem"></i>
+                                {% else %}
+                                    <i class="fas fa-tshirt"></i>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                        <div class="category-overlay">
+                            <div class="category-content">
+                                <h3>{{ category.name }}</h3>
+                                <p>{{ category.products.count }} מוצרים</p>
+                                <a href="{% url 'main:category_products' category_slug=category.slug %}" class="btn btn-white">
+                                    צפה במוצרים
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- Featured Products -->
+{% if featured_products %}
+<section class="featured-products">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="section-title">מוצרים מומלצים</h2>
+            <p class="section-subtitle">המוצרים הפופולריים ביותר שלנו</p>
+        </div>
+        
+        <div class="row g-4">
+            {% for product in featured_products %}
+            <div class="col-lg-3 col-md-6">
+                <div class="product-card">
+                    <div class="product-image">
+                        {% if product.get_main_image %}
+                            <img src="{{ product.get_main_image.image.url }}" alt="{{ product.name }}">
+                        {% else %}
+                            <div class="product-placeholder">
+                                <i class="fas fa-tshirt"></i>
+                            </div>
+                        {% endif %}
+                        <div class="product-badge">מומלץ</div>
+                    </div>
+                    <div class="product-content">
+                        <h4>{{ product.name }}</h4>
+                        <p class="product-price">₪{{ product.price }}</p>
+                        <div class="product-actions">
+                            <a href="{% url 'main:custom_design' %}?product={{ product.id }}" class="btn btn-primary btn-sm">
+                                עצב
+                            </a>
+                            <a href="https://wa.me/972501234567?text=היי! אני מעוניין במוצר: {{ product.name }}" class="btn btn-outline-primary btn-sm">
+                                הזמן
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- CTA Section -->
+<section class="cta-section">
+    <div class="container">
+        <div class="row g-4">
+            <div class="col-lg-6">
+                <div class="cta-card cta-design">
+                    <div class="cta-content">
+                        <h3>עצב בעצמך</h3>
+                        <p>עורך עיצובים מתקדם עם drag & drop</p>
+                        <a href="{% url 'main:custom_design' %}" class="btn btn-white">
+                            התחל לעצב
+                        </a>
+                    </div>
+                    <div class="cta-icon">
+                        <i class="fas fa-palette"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="cta-card cta-business">
+                    <div class="cta-content">
+                        <h3>הזמנות לעסקים</h3>
+                        <p>הנחות מיוחדות להזמנות בכמויות גדולות</p>
+                        <a href="{% url 'main:business_quote' %}" class="btn btn-white">
+                            קבל הצעת מחיר
+                        </a>
+                    </div>
+                    <div class="cta-icon">
+                        <i class="fas fa-briefcase"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Stats Section -->
+<section class="stats-section">
+    <div class="container">
+        <div class="row text-center">
+            <div class="col-lg-3 col-6">
+                <div class="stat-item">
+                    <div class="stat-number">500+</div>
+                    <div class="stat-label">לקוחות מרוצים</div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-6">
+                <div class="stat-item">
+                    <div class="stat-number">50+</div>
+                    <div class="stat-label">מוצרים שונים</div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-6">
+                <div class="stat-item">
+                    <div class="stat-number">10+</div>
+                    <div class="stat-label">שנות ניסיון</div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-6">
+                <div class="stat-item">
+                    <div class="stat-number">24/7</div>
+                    <div class="stat-label">שירות לקוחות</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

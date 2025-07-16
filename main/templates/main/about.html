@@ -1,0 +1,47 @@
+{% extends 'main/base.html' %}
+
+{% block title %}אודות - אריה קאסטום מיתוגים{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="content">
+        <h1>אודות אריה קאסטום מיתוגים</h1>
+        
+        <p style="font-size: 1.2rem; margin-bottom: 2rem;">
+            אנחנו מתמחים במתן פתרונות מיתוג מקצועיים ויצירתיים לעסקים מכל הגדלים.
+        </p>
+        
+        <h2>החזון שלנו</h2>
+        <p>
+            להביא כל עסק לרמת המיתוג הבאה, ליצור זהות חזותית ייחודית שתבדיל אותו מהמתחרים
+            ותעזור לו להצליח בשוק התחרותי של היום.
+        </p>
+        
+        <h2>הערכים שלנו</h2>
+        <div class="services">
+            <div class="service-card">
+                <h3>🎯 מקצועיות</h3>
+                <p>אנחנו מחויבים למתן שירות מקצועי ברמה הגבוהה ביותר</p>
+            </div>
+            <div class="service-card">
+                <h3>💡 יצירתיות</h3>
+                <p>כל פרויקט מקבל יחס אישי ופתרון יצירתי ייחודי</p>
+            </div>
+            <div class="service-card">
+                <h3>🤝 אמינות</h3>
+                <p>אנחנו עומדים בזמנים ומחויבים לספק תוצאות מעולות</p>
+            </div>
+        </div>
+        
+        <h2>הצוות שלנו</h2>
+        <p>
+            צוות מיטב המעצבים והמתכנתים עם ניסיון רב בתחום המיתוג והעיצוב הגרפי.
+            אנחנו מביאים ביחד יצירתיות, טכנולוgia מתקדמת וניסיון מוכח.
+        </p>
+        
+        <div style="text-align: center; margin-top: 2rem;">
+            <a href="{% url 'contact' %}" class="btn">בואו נתחיל לעבוד ביחד</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
