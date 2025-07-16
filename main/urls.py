@@ -11,6 +11,7 @@ urlpatterns = [
     path('business-quote/', views.business_quote, name='business_quote'),
     path('custom-design/', views.custom_design, name='custom_design'),
     path('save-design/', views.save_design, name='save_design'),
+    path('generate-ai-design/', views.generate_ai_design, name='generate_ai_design'),
     path('about/', views.about, name='about'),
     path('contact/', views.contact, name='contact'),
 ]

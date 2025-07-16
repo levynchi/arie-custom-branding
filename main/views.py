@@ -8,6 +8,13 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
+import requests
+import base64
+import os
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
+from datetime import datetime
+import uuid
 from .models import Category, Product, BusinessQuote, CustomDesign
 from .forms import BusinessQuoteForm, ContactForm
 
@@ -229,3 +236,115 @@ def save_design(request):
             return JsonResponse({'success': False, 'error': str(e)})
     
     return JsonResponse({'success': False, 'error': 'שיטה לא תקינה'})
+
+@csrf_exempt
+def generate_ai_design(request):
+    """יצירת עיצוב באמצעות AI"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            prompt = data.get('prompt', '')
+            product_id = data.get('product_id', '')
+            product_name = data.get('product_name', '')
+            
+            if not prompt:
+                return JsonResponse({'success': False, 'error': 'חסר תיאור עיצוב'})
+            
+            # Build enhanced prompt for the AI
+            enhanced_prompt = f"""
+            Create a high-quality graphic design for printing on a {product_name}. 
+            Design requirements: {prompt}
+            
+            Style guidelines:
+            - High contrast and clear visibility
+            - Suitable for textile printing
+            - Professional and appealing design
+            - No background (transparent or white)
+            - Clear, sharp details
+            - Optimized for screen printing or digital printing
+            
+            Create a design that would look great on a {product_name}.
+            """
+            
+            # Generate image using OpenAI DALL-E API
+            try:
+                # Note: You'll need to get an OpenAI API key and add it to settings
+                api_key = getattr(settings, 'OPENAI_API_KEY', None)
+                if not api_key:
+                    return JsonResponse({
+                        'success': False, 
+                        'error': 'AI service not configured. Please contact administrator.'
+                    })
+                
+                headers = {
+                    'Authorization': f'Bearer {api_key}',
+                    'Content-Type': 'application/json'
+                }
+                
+                payload = {
+                    'model': 'dall-e-3',
+                    'prompt': enhanced_prompt,
+                    'n': 1,
+                    'size': '1024x1024',
+                    'quality': 'standard',
+                    'response_format': 'url'
+                }
+                
+                response = requests.post(
+                    'https://api.openai.com/v1/images/generations',
+                    headers=headers,
+                    json=payload,
+                    timeout=30
+                )
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    image_url = result['data'][0]['url']
+                    
+                    # Download the generated image
+                    image_response = requests.get(image_url, timeout=30)
+                    if image_response.status_code == 200:
+                        # Create unique filename
+                        filename = f"ai_design_{uuid.uuid4().hex}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+                        
+                        # Save to media directory
+                        file_path = os.path.join('ai_designs', filename)
+                        saved_path = default_storage.save(file_path, ContentFile(image_response.content))
+                        
+                        # Get full URL
+                        full_url = request.build_absolute_uri(default_storage.url(saved_path))
+                        
+                        return JsonResponse({
+                            'success': True,
+                            'image_url': full_url,
+                            'filename': filename
+                        })
+                    else:
+                        return JsonResponse({
+                            'success': False,
+                            'error': 'Failed to download generated image'
+                        })
+                else:
+                    error_msg = response.json().get('error', {}).get('message', 'Unknown API error')
+                    return JsonResponse({
+                        'success': False,
+                        'error': f'AI service error: {error_msg}'
+                    })
+                    
+            except requests.exceptions.RequestException as e:
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Network error: {str(e)}'
+                })
+            except Exception as e:
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Unexpected error: {str(e)}'
+                })
+                
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'error': 'Invalid JSON data'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'Method not allowed'})

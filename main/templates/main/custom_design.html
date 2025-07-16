@@ -29,6 +29,21 @@
                     לחץ על טקסט לעריכה, על רקע האלמנט לגרירה
                 </div>
                 
+                <!-- AI Design Generator -->
+                <div class="mb-4">
+                    <h6><i class="fas fa-magic me-2"></i>עיצוב באמצעות AI</h6>
+                    <div class="ai-design-section">
+                        <textarea id="aiDesignPrompt" class="form-control mb-2" rows="3" placeholder="תאר את העיצוב שאתה רוצה... (לדוגמה: לוגו של כלב חמוד עם כתובת 'Best Friend')"></textarea>
+                        <button class="btn btn-gradient btn-sm w-100" onclick="generateAIDesign()" id="generateBtn">
+                            <i class="fas fa-robot me-1"></i> צור עיצוב
+                        </button>
+                        <div id="aiStatus" class="mt-2 text-center" style="display: none;">
+                            <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                            <span>יוצר עיצוב...</span>
+                        </div>
+                    </div>
+                </div>
+                
                 <!-- Product Selection -->
                 <div class="product-selection mb-3">
                     <h6>בחר מוצר לעיצוב</h6>
@@ -505,6 +520,91 @@ function confirmSave() {
         console.error('Error:', error);
         alert('שגיאה בשמירת העיצוב');
     });
+}
+
+// Generate AI Design
+async function generateAIDesign() {
+    const prompt = document.getElementById('aiDesignPrompt').value.trim();
+    const generateBtn = document.getElementById('generateBtn');
+    const aiStatus = document.getElementById('aiStatus');
+    
+    if (!prompt) {
+        alert('אנא הכנס תיאור עיצוב');
+        return;
+    }
+    
+    if (!selectedProduct) {
+        alert('אנא בחר מוצר לעיצוב');
+        return;
+    }
+    
+    // Show loading
+    generateBtn.disabled = true;
+    aiStatus.style.display = 'block';
+    
+    try {
+        const response = await fetch('/generate-ai-design/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                prompt: prompt,
+                product_id: selectedProduct.id,
+                product_name: document.querySelector('.product-option.selected .product-name').textContent
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Add the generated image to the canvas
+            const canvas = document.getElementById('designCanvas');
+            const imageElement = document.createElement('div');
+            imageElement.className = 'design-element ai-generated';
+            imageElement.id = 'element_' + (++elementCounter);
+            imageElement.innerHTML = `
+                <img src="${data.image_url}" class="image-element" style="width: 200px; height: 200px; object-fit: contain;">
+                <button class="delete-btn" onclick="deleteElement('${imageElement.id}')">&times;</button>
+            `;
+            imageElement.style.left = '100px';
+            imageElement.style.top = '100px';
+            
+            canvas.appendChild(imageElement);
+            makeElementInteractive(imageElement);
+            
+            // Clear the prompt
+            document.getElementById('aiDesignPrompt').value = '';
+            
+            alert('עיצוב נוצר בהצלחה!');
+        } else {
+            alert('שגיאה ביצירת העיצוב: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('שגיאה בחיבור לשרת');
+    } finally {
+        // Hide loading
+        generateBtn.disabled = false;
+        aiStatus.style.display = 'none';
+    }
+}
+
+// Helper function to get CSRF token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
 }
 
 // Deselect when clicking on canvas
