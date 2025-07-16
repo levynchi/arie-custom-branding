@@ -1,12 +1,25 @@
 {% extends 'main/base.html' %}
+{% load static %}
 
 {% block title %}עיצוב אישי - אריה קאסטום מיתוגים{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="{% static 'main/css/custom_design.css' %}">
 {% endblock %}
 
 {% block content %}
-<div class="container my-5">
+<!-- SUPER SIMPLE AI SECTION AT THE TOP -->
+<div class="ai-design-generator">
+    <h1 class="text-center mb-4">
+        <i class="fas fa-magic me-2"></i>🤖 AI DESIGN GENERATOR
+    </h1>
+    <textarea id="aiDesignPromptSimple" class="form-control mb-3" rows="4" placeholder="כתוב כאן מה אתה רוצה לעצב..."></textarea>
+    <button class="btn btn-primary w-100" onclick="generateAIDesign()">
+        <i class="fas fa-robot me-1"></i> צור עיצוב AI
+    </button>
+</div>
+
+<div class="container my-5" data-save-url="{% url 'main:save_design' %}">
     <div class="row">
         <div class="col-12">
             <h1 class="display-4 text-center mb-4">
@@ -19,19 +32,24 @@
             
             <!-- AI Design Generator Test -->
             <div class="row justify-content-center mb-4">
-                <div class="col-md-6">
-                    <div class="card" style="border: 3px solid #667eea; background: #f8f9fa;">
-                        <div class="card-body">
-                            <h5 class="card-title text-center" style="color: #667eea;">
-                                <i class="fas fa-magic me-2"></i>🤖 עיצוב באמצעות AI
-                            </h5>
-                            <textarea id="aiDesignPromptTop" class="form-control mb-3" rows="3" 
-                                      placeholder="תאר את העיצוב שאתה רוצה... (לדוגמה: לוגו של כלב חמוד עם כתובת 'Best Friend')"
-                                      style="border: 2px solid #e9ecef; border-radius: 8px; font-size: 14px;"></textarea>
-                            <button class="btn btn-primary w-100" onclick="generateAIDesign()" 
-                                    style="background: linear-gradient(45deg, #667eea, #764ba2); border: none; padding: 10px;">
-                                <i class="fas fa-robot me-1"></i> צור עיצוב
-                            </button>
+                <div class="col-md-8">
+                    <div class="alert alert-success text-center" style="border: 5px solid #28a745; background: #d4edda; font-size: 18px; font-weight: bold;">
+                        <h4 style="color: #155724; margin-bottom: 15px;">
+                            <i class="fas fa-magic me-2"></i>🤖 עיצוב באמצעות AI - אזור זה אמור להיות נראה!
+                        </h4>
+                        <div class="card" style="border: 3px solid #667eea; background: #f8f9fa;">
+                            <div class="card-body">
+                                <h5 class="card-title text-center" style="color: #667eea;">
+                                    <i class="fas fa-magic me-2"></i>🤖 עיצוב באמצעות AI
+                                </h5>
+                                <textarea id="aiDesignPromptTop" class="form-control mb-3" rows="3" 
+                                          placeholder="תאר את העיצוב שאתה רוצה... (לדוגמה: לוגו של כלב חמוד עם כתובת 'Best Friend')"
+                                          style="border: 3px solid #ff0000; border-radius: 8px; font-size: 16px; padding: 10px; background: #fff3cd;"></textarea>
+                                <button class="btn btn-primary w-100" onclick="generateAIDesign()" 
+                                        style="background: linear-gradient(45deg, #667eea, #764ba2); border: none; padding: 15px; font-size: 18px;">
+                                    <i class="fas fa-robot me-1"></i> צור עיצוב
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -49,18 +67,78 @@
                     לחץ על טקסט לעריכה, על רקע האלמנט לגרירה
                 </div>
                 
-                <!-- AI Design Generator -->
-                <div class="mb-4" style="background: #f8f9fa; padding: 15px; border-radius: 8px; border: 2px solid #667eea;">
-                    <div class="ai-design-section">
-                        <h6 style="color: #667eea; font-weight: bold; margin-bottom: 10px; font-size: 1.1em;">
-                            <i class="fas fa-magic me-2"></i>🤖 עיצוב באמצעות AI
-                        </h6>
-                        <textarea id="aiDesignPrompt" class="form-control mb-3" rows="3" 
+                <!-- AI Design Generator - SUPER VISIBLE -->
+                <div class="mb-4" style="
+                    background: #FF0000 !important; 
+                    padding: 30px !important; 
+                    border-radius: 15px !important; 
+                    border: 10px solid #00FF00 !important;
+                    box-shadow: 0 0 50px rgba(255, 0, 0, 0.8) !important;
+                    margin: 30px 0 !important;
+                    position: relative !important;
+                    z-index: 9999 !important;
+                    display: block !important;
+                    visibility: visible !important;
+                    opacity: 1 !important;
+                    height: auto !important;
+                    width: 100% !important;
+                    min-height: 200px !important;
+                ">
+                    <div class="ai-design-section" style="
+                        background: #FFFF00 !important;
+                        padding: 20px !important;
+                        border: 5px solid #FF00FF !important;
+                        border-radius: 10px !important;
+                        display: block !important;
+                        visibility: visible !important;
+                        opacity: 1 !important;
+                    ">
+                        <h1 style="
+                            color: #000000 !important; 
+                            font-weight: bold !important; 
+                            margin-bottom: 20px !important; 
+                            font-size: 30px !important;
+                            text-align: center !important;
+                            display: block !important;
+                            visibility: visible !important;
+                            opacity: 1 !important;
+                        ">
+                            <i class="fas fa-magic me-2"></i>🤖 עיצוב באמצעות AI - אני צריך להיות נראה!!!
+                        </h1>
+                        <textarea id="aiDesignPrompt" class="form-control mb-3" rows="5" 
                                   placeholder="תאר את העיצוב שאתה רוצה... (לדוגמה: לוגו של כלב חמוד עם כתובת 'Best Friend')"
-                                  style="border: 2px solid #e9ecef; border-radius: 8px; font-size: 14px;"></textarea>
+                                  style="
+                                    border: 10px solid #FF0000 !important; 
+                                    border-radius: 15px !important; 
+                                    font-size: 20px !important;
+                                    padding: 20px !important;
+                                    background: #FFFFFF !important;
+                                    color: #000000 !important;
+                                    display: block !important;
+                                    visibility: visible !important;
+                                    opacity: 1 !important;
+                                    width: 100% !important;
+                                    height: 100px !important;
+                                    min-height: 100px !important;
+                                    box-sizing: border-box !important;
+                                "></textarea>
                         <button class="btn btn-gradient btn-sm w-100" onclick="generateAIDesign()" id="generateBtn"
-                                style="background: linear-gradient(45deg, #667eea, #764ba2); color: white; border: none; padding: 10px;">
-                            <i class="fas fa-robot me-1"></i> צור עיצוב
+                                style="
+                                    background: #00FF00 !important; 
+                                    color: #000000 !important; 
+                                    border: 5px solid #FF0000 !important; 
+                                    padding: 20px !important;
+                                    font-size: 24px !important;
+                                    font-weight: bold !important;
+                                    display: block !important;
+                                    visibility: visible !important;
+                                    opacity: 1 !important;
+                                    width: 100% !important;
+                                    height: auto !important;
+                                    min-height: 60px !important;
+                                    box-sizing: border-box !important;
+                                ">
+                            <i class="fas fa-robot me-1"></i> צור עיצוב עכשיו!
                         </button>
                         <div id="aiStatus" class="mt-2 text-center" style="display: none; color: #667eea;">
                             <div class="spinner-border spinner-border-sm me-2" role="status"></div>
@@ -212,499 +290,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
-let selectedElement = null;
-let elementCounter = 0;
-let isDragging = false;
-let dragOffset = { x: 0, y: 0 };
-let selectedProduct = null;
-
-// Select product as background
-function selectProduct(productElement) {
-    // Remove selection from all products
-    document.querySelectorAll('.product-option').forEach(option => {
-        option.classList.remove('selected');
-    });
-    
-    // Add selection to clicked product
-    productElement.classList.add('selected');
-    
-    // Get product data
-    const productId = productElement.dataset.productId;
-    const productImage = productElement.dataset.productImage;
-    selectedProduct = { id: productId, image: productImage };
-    
-    // Update canvas background
-    const canvas = document.getElementById('designCanvas');
-    const placeholderText = document.getElementById('placeholderText');
-    
-    if (productImage && productImage.trim() !== '') {
-        canvas.style.backgroundImage = `url('${productImage}')`;
-        canvas.classList.add('with-product');
-        placeholderText.style.display = 'none';
-    } else {
-        // Show placeholder for products without image
-        canvas.style.backgroundImage = 'none';
-        canvas.classList.remove('with-product');
-        placeholderText.style.display = 'block';
-        placeholderText.innerHTML = `
-            <i class="fas fa-tshirt" style="font-size: 100px; opacity: 0.3;"></i>
-            <p>נבחר מוצר: ${productElement.querySelector('.product-name').textContent}</p>
-            <p style="font-size: 0.9em; color: #666;">התחל לעצב על המוצר</p>
-        `;
-    }
-}
-
-// Add text element
-function addText() {
-    const canvas = document.getElementById('designCanvas');
-    const textElement = document.createElement('div');
-    textElement.className = 'design-element text-element';
-    textElement.id = 'element_' + (++elementCounter);
-    textElement.innerHTML = `
-        <span contenteditable="true" style="outline: none;">טקסט חדש</span>
-        <button class="delete-btn" onclick="deleteElement('${textElement.id}')">&times;</button>
-    `;
-    textElement.style.left = '50px';
-    textElement.style.top = '50px';
-    textElement.style.fontSize = '24px';
-    textElement.style.color = '#000000';
-    
-    canvas.appendChild(textElement);
-    makeElementInteractive(textElement);
-}
-
-// Add image element
-function addImage(event) {
-    const file = event.target.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const canvas = document.getElementById('designCanvas');
-            const imageElement = document.createElement('div');
-            imageElement.className = 'design-element';
-            imageElement.id = 'element_' + (++elementCounter);
-            imageElement.innerHTML = `
-                <img src="${e.target.result}" class="image-element" style="width: 100px; height: 100px;">
-                <button class="delete-btn" onclick="deleteElement('${imageElement.id}')">&times;</button>
-            `;
-            imageElement.style.left = '100px';
-            imageElement.style.top = '100px';
-            
-            canvas.appendChild(imageElement);
-            makeElementInteractive(imageElement);
-        };
-        reader.readAsDataURL(file);
-    }
-}
-
-// Add emoji element
-function addEmoji(emoji) {
-    const canvas = document.getElementById('designCanvas');
-    const emojiElement = document.createElement('div');
-    emojiElement.className = 'design-element text-element';
-    emojiElement.id = 'element_' + (++elementCounter);
-    emojiElement.innerHTML = `
-        <span style="font-size: 48px; line-height: 1;">${emoji}</span>
-        <button class="delete-btn" onclick="deleteElement('${emojiElement.id}')">&times;</button>
-    `;
-    emojiElement.style.left = '150px';
-    emojiElement.style.top = '150px';
-    
-    canvas.appendChild(emojiElement);
-    makeElementInteractive(emojiElement);
-    
-    // Hide emoji picker
-    document.getElementById('emojiPicker').style.display = 'none';
-}
-
-// Toggle emoji picker
-function toggleEmojiPicker() {
-    const picker = document.getElementById('emojiPicker');
-    picker.style.display = picker.style.display === 'none' ? 'block' : 'none';
-}
-
-// Make element interactive
-function makeElementInteractive(element) {
-    element.addEventListener('mousedown', startDrag);
-    element.addEventListener('click', selectElement);
-    
-    // Special handling for text elements
-    if (element.classList.contains('text-element')) {
-        const textSpan = element.querySelector('span[contenteditable]');
-        if (textSpan) {
-            textSpan.addEventListener('click', function(e) {
-                e.stopPropagation();
-                // Focus on the text for editing
-                this.focus();
-            });
-            
-            textSpan.addEventListener('mousedown', function(e) {
-                e.stopPropagation();
-            });
-            
-            textSpan.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    this.blur();
-                }
-            });
-        }
-    }
-}
-
-// Start dragging
-function startDrag(e) {
-    if (e.target.classList.contains('delete-btn')) return;
-    if (e.target.hasAttribute('contenteditable')) return; // Don't drag when editing text
-    
-    isDragging = true;
-    selectedElement = e.currentTarget;
-    selectElement(e);
-    
-    const rect = selectedElement.getBoundingClientRect();
-    const canvasRect = document.getElementById('designCanvas').getBoundingClientRect();
-    
-    dragOffset.x = e.clientX - rect.left;
-    dragOffset.y = e.clientY - rect.top;
-    
-    selectedElement.classList.add('dragging');
-    
-    document.addEventListener('mousemove', drag);
-    document.addEventListener('mouseup', stopDrag);
-    
-    e.preventDefault();
-}
-
-// Drag element
-function drag(e) {
-    if (!isDragging || !selectedElement) return;
-    
-    const canvasRect = document.getElementById('designCanvas').getBoundingClientRect();
-    const x = e.clientX - canvasRect.left - dragOffset.x;
-    const y = e.clientY - canvasRect.top - dragOffset.y;
-    
-    selectedElement.style.left = Math.max(0, Math.min(canvasRect.width - selectedElement.offsetWidth, x)) + 'px';
-    selectedElement.style.top = Math.max(0, Math.min(canvasRect.height - selectedElement.offsetHeight, y)) + 'px';
-}
-
-// Stop dragging
-function stopDrag() {
-    if (selectedElement) {
-        selectedElement.classList.remove('dragging');
-    }
-    isDragging = false;
-    document.removeEventListener('mousemove', drag);
-    document.removeEventListener('mouseup', stopDrag);
-}
-
-// Select element
-function selectElement(e) {
-    if (e.target.classList.contains('delete-btn')) return;
-    if (e.target.hasAttribute('contenteditable')) return; // Don't select when editing text
-    
-    // Remove previous selection
-    document.querySelectorAll('.design-element').forEach(el => {
-        el.classList.remove('selected');
-    });
-    
-    // Add selection to current element
-    const element = e.currentTarget;
-    element.classList.add('selected');
-    selectedElement = element;
-    
-    e.stopPropagation();
-}
-
-// Delete element
-function deleteElement(elementId) {
-    const element = document.getElementById(elementId);
-    if (element) {
-        element.remove();
-        selectedElement = null;
-    }
-}
-
-// Select color picker
-function selectColorPicker(picker) {
-    // Remove selected class from all color pickers
-    document.querySelectorAll('.color-picker').forEach(cp => {
-        cp.classList.remove('selected');
-    });
-    
-    // Add selected class to clicked picker
-    picker.classList.add('selected');
-    
-    // Update current color indicator
-    updateColorIndicator(picker.value);
-}
-
-// Update color indicator
-function updateColorIndicator(color) {
-    const swatch = document.getElementById('currentColorSwatch');
-    const text = document.getElementById('currentColorText');
-    
-    swatch.style.backgroundColor = color;
-    
-    // Convert hex to color name (basic colors)
-    const colorNames = {
-        '#000000': 'שחור',
-        '#ff0000': 'אדום',
-        '#00ff00': 'ירוק',
-        '#0000ff': 'כחול',
-        '#ffff00': 'צהוב',
-        '#ff00ff': 'סגול',
-        '#00ffff': 'תכלת',
-        '#ffffff': 'לבן'
-    };
-    
-    text.textContent = colorNames[color.toLowerCase()] || color.toUpperCase();
-}
-
-// Change color
-function changeColor(color) {
-    updateColorIndicator(color);
-    
-    if (selectedElement) {
-        const textSpan = selectedElement.querySelector('span');
-        if (textSpan) {
-            textSpan.style.color = color;
-        }
-    }
-}
-
-// Change font size
-function changeFontSize(size) {
-    document.getElementById('fontSizeValue').textContent = size + 'px';
-    if (selectedElement) {
-        const textSpan = selectedElement.querySelector('span');
-        if (textSpan) {
-            textSpan.style.fontSize = size + 'px';
-        }
-    }
-}
-
-// Clear canvas
-function clearCanvas() {
-    if (confirm('האם אתה בטוח שאתה רוצה לנקות את כל העיצוב?')) {
-        const canvas = document.getElementById('designCanvas');
-        const elements = canvas.querySelectorAll('.design-element');
-        elements.forEach(el => el.remove());
-        selectedElement = null;
-    }
-}
-
-// Save design
-function saveDesign() {
-    const modal = new bootstrap.Modal(document.getElementById('saveModal'));
-    modal.show();
-}
-
-// Confirm save
-function confirmSave() {
-    const designName = document.getElementById('designName').value || 'עיצוב ללא שם';
-    const canvas = document.getElementById('designCanvas');
-    const elements = Array.from(canvas.querySelectorAll('.design-element'));
-    
-    const designData = {
-        product: selectedProduct,
-        elements: elements.map(el => ({
-            id: el.id,
-            type: el.classList.contains('text-element') ? 'text' : 'image',
-            left: el.style.left,
-            top: el.style.top,
-            content: el.innerHTML,
-            styles: {
-                fontSize: el.style.fontSize,
-                color: el.style.color
-            }
-        }))
-    };
-    
-    fetch('{% url "main:save_design" %}', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            name: designName,
-            design_data: designData
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert('העיצוב נשמר בהצלחה!');
-            const modal = bootstrap.Modal.getInstance(document.getElementById('saveModal'));
-            modal.hide();
-        } else {
-            alert('שגיאה בשמירת העיצוב: ' + data.error);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('שגיאה בשמירת העיצוב');
-    });
-}
-
-// Generate AI Design
-async function generateAIDesign() {
-    console.log('generateAIDesign called');
-    
-    // Get prompt from either textarea
-    const promptFromSidebar = document.getElementById('aiDesignPrompt');
-    const promptFromTop = document.getElementById('aiDesignPromptTop');
-    
-    let prompt = '';
-    if (promptFromSidebar && promptFromSidebar.value.trim()) {
-        prompt = promptFromSidebar.value.trim();
-    } else if (promptFromTop && promptFromTop.value.trim()) {
-        prompt = promptFromTop.value.trim();
-    }
-    
-    const generateBtn = document.getElementById('generateBtn');
-    const aiStatus = document.getElementById('aiStatus');
-    
-    console.log('Prompt:', prompt);
-    
-    if (!prompt) {
-        alert('אנא הכנס תיאור עיצוב');
-        return;
-    }
-    
-    if (!selectedProduct) {
-        alert('אנא בחר מוצר לעיצוב');
-        return;
-    }
-    
-    console.log('Selected product:', selectedProduct);
-    
-    // Show loading
-    if (generateBtn) generateBtn.disabled = true;
-    if (aiStatus) aiStatus.style.display = 'block';
-    
-    try {
-        const response = await fetch('/generate-ai-design/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')
-            },
-            body: JSON.stringify({
-                prompt: prompt,
-                product_id: selectedProduct.id,
-                product_name: document.querySelector('.product-option.selected .product-name').textContent
-            })
-        });
-        
-        const data = await response.json();
-        console.log('Response:', data);
-        
-        if (data.success) {
-            // Add the generated image to the canvas
-            const canvas = document.getElementById('designCanvas');
-            const imageElement = document.createElement('div');
-            imageElement.className = 'design-element ai-generated';
-            imageElement.id = 'element_' + (++elementCounter);
-            imageElement.innerHTML = `
-                <img src="${data.image_url}" class="image-element" style="width: 200px; height: 200px; object-fit: contain;">
-                <button class="delete-btn" onclick="deleteElement('${imageElement.id}')">&times;</button>
-            `;
-            imageElement.style.left = '100px';
-            imageElement.style.top = '100px';
-            
-            canvas.appendChild(imageElement);
-            makeElementInteractive(imageElement);
-            
-            // Clear both prompts
-            if (promptFromSidebar) promptFromSidebar.value = '';
-            if (promptFromTop) promptFromTop.value = '';
-            
-            alert('עיצוב נוצר בהצלחה!');
-        } else {
-            alert('שגיאה ביצירת העיצוב: ' + data.error);
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        alert('שגיאה בחיבור לשרת');
-    } finally {
-        // Hide loading
-        if (generateBtn) generateBtn.disabled = false;
-        if (aiStatus) aiStatus.style.display = 'none';
-    }
-}
-
-// Helper function to get CSRF token
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
-        }
-    }
-    return cookieValue;
-}
-
-// Deselect when clicking on canvas
-document.getElementById('designCanvas').addEventListener('click', function(e) {
-    if (e.target === this) {
-        document.querySelectorAll('.design-element').forEach(el => {
-            el.classList.remove('selected');
-        });
-        selectedElement = null;
-    }
-});
-
-// Hide emoji picker when clicking elsewhere
-document.addEventListener('click', function(e) {
-    if (!e.target.closest('.emoji-picker') && !e.target.closest('button')) {
-        document.getElementById('emojiPicker').style.display = 'none';
-    }
-});
-
-// Initialize color indicator
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM loaded');
-    
-    // Check if AI section exists
-    const aiSection = document.querySelector('.ai-design-section');
-    const aiTextarea = document.getElementById('aiDesignPrompt');
-    const aiButton = document.getElementById('generateBtn');
-    
-    if (aiSection) {
-        console.log('AI section found');
-        alert('AI section נמצא בדף!');
-    } else {
-        console.log('AI section NOT found');
-        alert('AI section לא נמצא!');
-    }
-    
-    if (aiTextarea) {
-        console.log('AI textarea found');
-        aiTextarea.style.border = '3px solid red'; // הדגשה זמנית
-    } else {
-        console.log('AI textarea NOT found');
-    }
-    
-    if (aiButton) {
-        console.log('AI button found');
-        aiButton.style.background = 'red'; // הדגשה זמנית
-    } else {
-        console.log('AI button NOT found');
-    }
-    
-    updateColorIndicator('#000000');
-    
-    // Auto-select product if one is already selected
-    const selectedProduct = document.querySelector('.product-option.selected');
-    if (selectedProduct) {
-        selectProduct(selectedProduct);
-    }
-});
-</script>
+<script src="{% static 'main/js/custom_design.js' %}"></script>
 {% endblock %}
