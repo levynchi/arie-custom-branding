@@ -969,6 +969,82 @@ body {
     font-weight: 600;
 }
 
+/* AI Design Generator Styles */
+.ai-design-section {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    border: 2px solid #e9ecef;
+    margin-bottom: 15px;
+}
+
+.ai-design-section h6 {
+    color: #667eea;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.btn-gradient {
+    background: linear-gradient(45deg, #667eea, #764ba2);
+    color: white;
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.btn-gradient:hover {
+    background: linear-gradient(45deg, #764ba2, #667eea);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(118, 75, 162, 0.3);
+}
+
+.ai-design-section textarea {
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    transition: border-color 0.3s ease;
+    font-size: 14px;
+}
+
+.ai-design-section textarea:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+#aiStatus {
+    color: #667eea;
+    font-size: 0.9rem;
+}
+
+.spinner-border-sm {
+    width: 1rem;
+    height: 1rem;
+}
+
+/* AI Generated Design Elements */
+.ai-generated {
+    border: 2px solid #667eea;
+    border-radius: 8px;
+}
+
+.ai-generated .image-element {
+    border-radius: 6px;
+    box-shadow: 0 2px 10px rgba(102, 126, 234, 0.2);
+}
+
+.ai-generated::before {
+    content: "AI";
+    position: absolute;
+    top: -8px;
+    left: -8px;
+    background: linear-gradient(45deg, #667eea, #764ba2);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: bold;
+    z-index: 1000;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .hero-title {

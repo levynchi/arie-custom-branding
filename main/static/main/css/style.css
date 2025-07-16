@@ -970,6 +970,20 @@ body {
 }
 
 /* AI Design Generator Styles */
+.ai-design-section {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    border: 2px solid #e9ecef;
+    margin-bottom: 15px;
+}
+
+.ai-design-section h6 {
+    color: #667eea;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
 .btn-gradient {
     background: linear-gradient(45deg, #667eea, #764ba2);
     color: white;
@@ -988,6 +1002,7 @@ body {
     border: 2px solid #e9ecef;
     border-radius: 8px;
     transition: border-color 0.3s ease;
+    font-size: 14px;
 }
 
 .ai-design-section textarea:focus {

@@ -31,9 +31,9 @@
                 
                 <!-- AI Design Generator -->
                 <div class="mb-4">
-                    <h6><i class="fas fa-magic me-2"></i>עיצוב באמצעות AI</h6>
                     <div class="ai-design-section">
-                        <textarea id="aiDesignPrompt" class="form-control mb-2" rows="3" placeholder="תאר את העיצוב שאתה רוצה... (לדוגמה: לוגו של כלב חמוד עם כתובת 'Best Friend')"></textarea>
+                        <h6><i class="fas fa-magic me-2"></i>עיצוב באמצעות AI</h6>
+                        <textarea id="aiDesignPrompt" class="form-control mb-3" rows="3" placeholder="תאר את העיצוב שאתה רוצה... (לדוגמה: לוגו של כלב חמוד עם כתובת 'Best Friend')"></textarea>
                         <button class="btn btn-gradient btn-sm w-100" onclick="generateAIDesign()" id="generateBtn">
                             <i class="fas fa-robot me-1"></i> צור עיצוב
                         </button>
@@ -524,9 +524,12 @@ function confirmSave() {
 
 // Generate AI Design
 async function generateAIDesign() {
+    console.log('generateAIDesign called');
     const prompt = document.getElementById('aiDesignPrompt').value.trim();
     const generateBtn = document.getElementById('generateBtn');
     const aiStatus = document.getElementById('aiStatus');
+    
+    console.log('Prompt:', prompt);
     
     if (!prompt) {
         alert('אנא הכנס תיאור עיצוב');
@@ -537,6 +540,8 @@ async function generateAIDesign() {
         alert('אנא בחר מוצר לעיצוב');
         return;
     }
+    
+    console.log('Selected product:', selectedProduct);
     
     // Show loading
     generateBtn.disabled = true;
@@ -557,6 +562,7 @@ async function generateAIDesign() {
         });
         
         const data = await response.json();
+        console.log('Response:', data);
         
         if (data.success) {
             // Add the generated image to the canvas
@@ -626,7 +632,16 @@ document.addEventListener('click', function(e) {
 
 // Initialize color indicator
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded');
     updateColorIndicator('#000000');
+    
+    // Check if AI section exists
+    const aiSection = document.querySelector('.ai-design-section');
+    if (aiSection) {
+        console.log('AI section found');
+    } else {
+        console.log('AI section NOT found');
+    }
     
     // Auto-select product if one is already selected
     const selectedProduct = document.querySelector('.product-option.selected');
