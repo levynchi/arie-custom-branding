@@ -11,8 +11,12 @@ import json
 import requests
 import base64
 import os
+import uuid
+from datetime import datetime
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
+from PIL import Image
+import io
 from datetime import datetime
 import uuid
 from .models import Category, Product, BusinessQuote, CustomDesign
@@ -252,18 +256,25 @@ def generate_ai_design(request):
             
             # Build enhanced prompt for the AI
             enhanced_prompt = f"""
-            Create a high-quality graphic design for printing on a {product_name}. 
-            Design requirements: {prompt}
+            Create a high-quality graphic design element only (NOT the product itself) based on: {prompt}
             
-            Style guidelines:
-            - High contrast and clear visibility
-            - Suitable for textile printing
-            - Professional and appealing design
-            - No background (transparent or white)
-            - Clear, sharp details
-            - Optimized for screen printing or digital printing
+            IMPORTANT REQUIREMENTS:
+            1. Create ONLY the graphic/design element - DO NOT include the product (bag, hat, shirt, etc.)
+            2. If user mentions a product (bag, hat, shirt, etc.), create only the graphic that would go ON that product
+            3. Maximum dimensions: 396.8 pixels width x 453.5 pixels height
+            4. PNG format with transparent background (no background at all)
+            5. Ultra-high quality and sharp details for printing
+            6. High contrast design suitable for textile printing
+            7. Professional and clean design
+            8. Vector-style or high-resolution graphic suitable for screen printing
             
-            Create a design that would look great on a {product_name}.
+            Examples:
+            - If user says "logo for a bag" → create only the logo graphic, not the bag
+            - If user says "design for a hat" → create only the design graphic, not the hat
+            - If user says "text for a shirt" → create only the text graphic, not the shirt
+            
+            Create a standalone graphic design element that can be printed on any product.
+            Focus on the graphic content only, with transparent background, optimized for printing.
             """
             
             # Generate image using OpenAI DALL-E API
@@ -285,8 +296,8 @@ def generate_ai_design(request):
                     'model': 'dall-e-3',
                     'prompt': enhanced_prompt,
                     'n': 1,
-                    'size': '1024x1024',
-                    'quality': 'standard',
+                    'size': '1024x1024',  # OpenAI supports: 1024x1024, 1792x1024, 1024x1792
+                    'quality': 'hd',      # Changed to 'hd' for higher quality
                     'response_format': 'url'
                 }
                 
@@ -304,21 +315,49 @@ def generate_ai_design(request):
                     # Download the generated image
                     image_response = requests.get(image_url, timeout=30)
                     if image_response.status_code == 200:
-                        # Create unique filename
-                        filename = f"ai_design_{uuid.uuid4().hex}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
-                        
-                        # Save to media directory
-                        file_path = os.path.join('ai_designs', filename)
-                        saved_path = default_storage.save(file_path, ContentFile(image_response.content))
-                        
-                        # Get full URL
-                        full_url = request.build_absolute_uri(default_storage.url(saved_path))
-                        
-                        return JsonResponse({
-                            'success': True,
-                            'image_url': full_url,
-                            'filename': filename
-                        })
+                        # Process the image to resize it to the required dimensions
+                        try:
+                            # Open the image with PIL
+                            image = Image.open(io.BytesIO(image_response.content))
+                            
+                            # Convert to RGBA to ensure transparency support
+                            if image.mode != 'RGBA':
+                                image = image.convert('RGBA')
+                            
+                            # Resize to the specified dimensions (396.8 x 453.5 pixels)
+                            # Round to nearest integer pixels
+                            target_size = (397, 454)  # Rounded from 396.8 x 453.5
+                            
+                            # Resize with high quality resampling
+                            image = image.resize(target_size, Image.Resampling.LANCZOS)
+                            
+                            # Save the processed image to a BytesIO buffer
+                            output_buffer = io.BytesIO()
+                            image.save(output_buffer, format='PNG', optimize=True, quality=100)
+                            output_buffer.seek(0)
+                            
+                            # Create unique filename
+                            filename = f"ai_design_{uuid.uuid4().hex}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+                            
+                            # Save to media directory
+                            file_path = os.path.join('ai_designs', filename)
+                            saved_path = default_storage.save(file_path, ContentFile(output_buffer.getvalue()))
+                            
+                            # Get full URL
+                            full_url = request.build_absolute_uri(default_storage.url(saved_path))
+                            
+                            return JsonResponse({
+                                'success': True,
+                                'image_url': full_url,
+                                'filename': filename,
+                                'dimensions': f'{target_size[0]}x{target_size[1]} pixels'
+                            })
+                            
+                        except Exception as img_error:
+                            return JsonResponse({
+                                'success': False,
+                                'error': f'Image processing error: {str(img_error)}'
+                            })
                     else:
                         return JsonResponse({
                             'success': False,

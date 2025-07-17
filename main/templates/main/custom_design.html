@@ -8,16 +8,6 @@
 {% endblock %}
 
 {% block content %}
-<!-- SUPER SIMPLE AI SECTION AT THE TOP -->
-<div class="ai-design-generator">
-    <h1 class="text-center mb-4">
-        <i class="fas fa-magic me-2"></i>🤖 AI DESIGN GENERATOR
-    </h1>
-    <textarea id="aiDesignPromptSimple" class="form-control mb-3" rows="4" placeholder="כתוב כאן מה אתה רוצה לעצב..."></textarea>
-    <button class="btn btn-primary w-100" onclick="generateAIDesign()">
-        <i class="fas fa-robot me-1"></i> צור עיצוב AI
-    </button>
-</div>
 
 <div class="container my-5" data-save-url="{% url 'main:save_design' %}">
     <div class="row">
@@ -29,31 +19,6 @@
             <p class="lead text-center mb-5">
                 צרו עיצוב אישי עבור המוצרים שלכם באמצעות עורך הגרפיקה הפשוט שלנו
             </p>
-            
-            <!-- AI Design Generator Test -->
-            <div class="row justify-content-center mb-4">
-                <div class="col-md-8">
-                    <div class="alert alert-success text-center" style="border: 5px solid #28a745; background: #d4edda; font-size: 18px; font-weight: bold;">
-                        <h4 style="color: #155724; margin-bottom: 15px;">
-                            <i class="fas fa-magic me-2"></i>🤖 עיצוב באמצעות AI - אזור זה אמור להיות נראה!
-                        </h4>
-                        <div class="card" style="border: 3px solid #667eea; background: #f8f9fa;">
-                            <div class="card-body">
-                                <h5 class="card-title text-center" style="color: #667eea;">
-                                    <i class="fas fa-magic me-2"></i>🤖 עיצוב באמצעות AI
-                                </h5>
-                                <textarea id="aiDesignPromptTop" class="form-control mb-3" rows="3" 
-                                          placeholder="תאר את העיצוב שאתה רוצה... (לדוגמה: לוגו של כלב חמוד עם כתובת 'Best Friend')"
-                                          style="border: 3px solid #ff0000; border-radius: 8px; font-size: 16px; padding: 10px; background: #fff3cd;"></textarea>
-                                <button class="btn btn-primary w-100" onclick="generateAIDesign()" 
-                                        style="background: linear-gradient(45deg, #667eea, #764ba2); border: none; padding: 15px; font-size: 18px;">
-                                    <i class="fas fa-robot me-1"></i> צור עיצוב
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -67,83 +32,49 @@
                     לחץ על טקסט לעריכה, על רקע האלמנט לגרירה
                 </div>
                 
-                <!-- AI Design Generator - SUPER VISIBLE -->
-                <div class="mb-4" style="
-                    background: #FF0000 !important; 
-                    padding: 30px !important; 
-                    border-radius: 15px !important; 
-                    border: 10px solid #00FF00 !important;
-                    box-shadow: 0 0 50px rgba(255, 0, 0, 0.8) !important;
-                    margin: 30px 0 !important;
-                    position: relative !important;
-                    z-index: 9999 !important;
-                    display: block !important;
-                    visibility: visible !important;
-                    opacity: 1 !important;
-                    height: auto !important;
-                    width: 100% !important;
-                    min-height: 200px !important;
-                ">
-                    <div class="ai-design-section" style="
-                        background: #FFFF00 !important;
-                        padding: 20px !important;
-                        border: 5px solid #FF00FF !important;
-                        border-radius: 10px !important;
-                        display: block !important;
-                        visibility: visible !important;
-                        opacity: 1 !important;
-                    ">
-                        <h1 style="
-                            color: #000000 !important; 
-                            font-weight: bold !important; 
-                            margin-bottom: 20px !important; 
-                            font-size: 30px !important;
-                            text-align: center !important;
-                            display: block !important;
-                            visibility: visible !important;
-                            opacity: 1 !important;
-                        ">
-                            <i class="fas fa-magic me-2"></i>🤖 עיצוב באמצעות AI - אני צריך להיות נראה!!!
-                        </h1>
-                        <textarea id="aiDesignPrompt" class="form-control mb-3" rows="5" 
-                                  placeholder="תאר את העיצוב שאתה רוצה... (לדוגמה: לוגו של כלב חמוד עם כתובת 'Best Friend')"
-                                  style="
-                                    border: 10px solid #FF0000 !important; 
-                                    border-radius: 15px !important; 
-                                    font-size: 20px !important;
-                                    padding: 20px !important;
-                                    background: #FFFFFF !important;
-                                    color: #000000 !important;
-                                    display: block !important;
-                                    visibility: visible !important;
-                                    opacity: 1 !important;
-                                    width: 100% !important;
-                                    height: 100px !important;
-                                    min-height: 100px !important;
-                                    box-sizing: border-box !important;
-                                "></textarea>
-                        <button class="btn btn-gradient btn-sm w-100" onclick="generateAIDesign()" id="generateBtn"
-                                style="
-                                    background: #00FF00 !important; 
-                                    color: #000000 !important; 
-                                    border: 5px solid #FF0000 !important; 
-                                    padding: 20px !important;
-                                    font-size: 24px !important;
-                                    font-weight: bold !important;
-                                    display: block !important;
-                                    visibility: visible !important;
-                                    opacity: 1 !important;
-                                    width: 100% !important;
-                                    height: auto !important;
-                                    min-height: 60px !important;
-                                    box-sizing: border-box !important;
-                                ">
-                            <i class="fas fa-robot me-1"></i> צור עיצוב עכשיו!
-                        </button>
-                        <div id="aiStatus" class="mt-2 text-center" style="display: none; color: #667eea;">
-                            <div class="spinner-border spinner-border-sm me-2" role="status"></div>
-                            <span>יוצר עיצוב...</span>
-                        </div>
+                <!-- AI Design Generator -->
+                <div class="mb-4">
+                    <h6 class="mb-3">
+                        <i class="fas fa-magic me-2"></i>🤖 עיצוב באמצעות AI
+                    </h6>
+                    <textarea id="aiDesignPrompt" class="form-control mb-3" rows="5" 
+                              placeholder="תאר את העיצוב שאתה רוצה... (לדוגמה: לוגו של כלב חמוד עם כתובת 'Best Friend')"
+                              style="
+                                border: 10px solid #FF0000 !important; 
+                                border-radius: 15px !important; 
+                                font-size: 20px !important;
+                                padding: 20px !important;
+                                background: #FFFFFF !important;
+                                color: #000000 !important;
+                                display: block !important;
+                                visibility: visible !important;
+                                opacity: 1 !important;
+                                width: 100% !important;
+                                height: 100px !important;
+                                min-height: 100px !important;
+                                box-sizing: border-box !important;
+                            "></textarea>
+                    <button class="btn btn-gradient btn-sm w-100" onclick="generateAIDesign()" id="generateBtn"
+                            style="
+                                background: #00FF00 !important; 
+                                color: #000000 !important; 
+                                border: 5px solid #FF0000 !important; 
+                                padding: 20px !important;
+                                font-size: 24px !important;
+                                font-weight: bold !important;
+                                display: block !important;
+                                visibility: visible !important;
+                                opacity: 1 !important;
+                                width: 100% !important;
+                                height: auto !important;
+                                min-height: 60px !important;
+                                box-sizing: border-box !important;
+                            ">
+                        <i class="fas fa-robot me-1"></i> צור עיצוב עכשיו!
+                    </button>
+                    <div id="aiStatus" class="mt-2 text-center" style="display: none; color: #667eea;">
+                        <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                        <span>יוצר עיצוב...</span>
                     </div>
                 </div>
                 
@@ -162,6 +93,12 @@
                             {% endif %}
                             <div class="product-name">{{ product.name }}</div>
                             <div class="product-price">₪{{ product.price }}</div>
+                            {% if product.can_print and product.max_print_width and product.max_print_height %}
+                            <div class="product-print-size" style="font-size: 0.75em; color: #666; margin-top: 2px;">
+                                <i class="fas fa-expand-arrows-alt me-1"></i>
+                                {{ product.max_print_width }}x{{ product.max_print_height }} ס"מ
+                            </div>
+                            {% endif %}
                         </div>
                         {% endfor %}
                     </div>
@@ -261,6 +198,10 @@
                     בחר מוצר מהרשימה למעלה, ואז גרור ושחרר אלמנטים לתוך אזור העיצוב<br>
                     <small>💡 לחץ על טקסט כדי לערוך, לחץ על רקע כדי לגרור</small>
                 </p>
+                <div id="printDimensions" class="alert alert-info" style="display: none;">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>מידות הדפסה מקסימליות:</strong> <span id="printDimensionsText"></span>
+                </div>
             </div>
         </div>
     </div>

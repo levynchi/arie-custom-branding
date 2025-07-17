@@ -22,6 +22,13 @@ function selectProduct(productElement) {
     const productImage = productElement.dataset.productImage;
     selectedProduct = { id: productId, image: productImage };
     
+    // Get print dimensions if available
+    const printSizeElement = productElement.querySelector('.product-print-size');
+    let printDimensions = null;
+    if (printSizeElement) {
+        printDimensions = printSizeElement.textContent.trim();
+    }
+    
     // Update canvas background
     const canvas = document.getElementById('designCanvas');
     const placeholderText = document.getElementById('placeholderText');
@@ -40,6 +47,17 @@ function selectProduct(productElement) {
             <p>נבחר מוצר: ${productElement.querySelector('.product-name').textContent}</p>
             <p style="font-size: 0.9em; color: #666;">התחל לעצב על המוצר</p>
         `;
+    }
+    
+    // Update print dimensions display
+    const printDimensionsDiv = document.getElementById('printDimensions');
+    const printDimensionsText = document.getElementById('printDimensionsText');
+    
+    if (printDimensions) {
+        printDimensionsText.textContent = printDimensions;
+        printDimensionsDiv.style.display = 'block';
+    } else {
+        printDimensionsDiv.style.display = 'none';
     }
 }
 

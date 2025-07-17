@@ -14,12 +14,31 @@ class CategoryAdmin(admin.ModelAdmin):
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ['name', 'category', 'price', 'fabric_type', 'is_active', 'is_featured', 'stock_quantity']
-    list_filter = ['category', 'fabric_type', 'is_active', 'is_featured', 'created_at']
+    list_display = ['name', 'category', 'price', 'fabric_type', 'can_print', 'max_print_width', 'max_print_height', 'is_active', 'is_featured', 'stock_quantity']
+    list_filter = ['category', 'fabric_type', 'can_print', 'is_active', 'is_featured', 'created_at']
     search_fields = ['name', 'description']
     prepopulated_fields = {'slug': ('name',)}
     inlines = [ProductImageInline]
-    list_editable = ['is_active', 'is_featured', 'stock_quantity']
+    list_editable = ['can_print', 'max_print_width', 'max_print_height', 'is_active', 'is_featured', 'stock_quantity']
+    
+    fieldsets = (
+        ('מידע כללי', {
+            'fields': ('name', 'slug', 'category', 'description', 'image')
+        }),
+        ('מחיר ומלאי', {
+            'fields': ('price', 'stock_quantity')
+        }),
+        ('מפרט מוצר', {
+            'fields': ('fabric_type', 'colors_available', 'sizes_available')
+        }),
+        ('הדפסה', {
+            'fields': ('can_print', 'max_print_width', 'max_print_height'),
+            'description': 'מידות הדפסה מקסימליות בסנטימטרים'
+        }),
+        ('הגדרות', {
+            'fields': ('is_active', 'is_featured')
+        }),
+    )
 
 @admin.register(ProductImage)
 class ProductImageAdmin(admin.ModelAdmin):

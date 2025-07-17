@@ -45,7 +45,10 @@ def create_sample_data():
             'colors_available': ['לבן', 'שחור', 'כחול', 'אדום'],
             'sizes_available': ['S', 'M', 'L', 'XL', 'XXL'],
             'stock_quantity': 50,
-            'is_featured': True
+            'is_featured': True,
+            'can_print': True,
+            'max_print_width': 25.0,
+            'max_print_height': 30.0
         },
         {
             'name': 'חולצת טי רגילה',
@@ -57,7 +60,10 @@ def create_sample_data():
             'colors_available': ['לבן', 'שחור', 'אפור', 'כחול נייבי'],
             'sizes_available': ['S', 'M', 'L', 'XL'],
             'stock_quantity': 100,
-            'is_featured': True
+            'is_featured': True,
+            'can_print': True,
+            'max_print_width': 28.0,
+            'max_print_height': 35.0
         },
         {
             'name': 'כובע מצחייה',
@@ -69,7 +75,10 @@ def create_sample_data():
             'colors_available': ['שחור', 'כחול', 'אדום', 'לבן'],
             'sizes_available': ['One Size'],
             'stock_quantity': 30,
-            'is_featured': True
+            'is_featured': True,
+            'can_print': True,
+            'max_print_width': 12.0,
+            'max_print_height': 8.0
         },
         {
             'name': 'כובע צמר',
@@ -80,7 +89,10 @@ def create_sample_data():
             'fabric_type': 'blend',
             'colors_available': ['שחור', 'אפור', 'כחול'],
             'sizes_available': ['One Size'],
-            'stock_quantity': 25
+            'stock_quantity': 25,
+            'can_print': True,
+            'max_print_width': 10.0,
+            'max_print_height': 6.0
         },
         {
             'name': 'תיק קניות',
@@ -91,7 +103,10 @@ def create_sample_data():
             'fabric_type': 'cotton',
             'colors_available': ['טבעי', 'שחור', 'כחול'],
             'sizes_available': ['רגיל'],
-            'stock_quantity': 40
+            'stock_quantity': 40,
+            'can_print': True,
+            'max_print_width': 30.0,
+            'max_print_height': 25.0
         },
         {
             'name': 'תיק גב',
@@ -103,7 +118,10 @@ def create_sample_data():
             'colors_available': ['שחור', 'כחול', 'אפור'],
             'sizes_available': ['רגיל'],
             'stock_quantity': 20,
-            'is_featured': True
+            'is_featured': True,
+            'can_print': True,
+            'max_print_width': 20.0,
+            'max_print_height': 15.0
         },
         {
             'name': 'ספל קרמיקה',
@@ -115,7 +133,10 @@ def create_sample_data():
             'colors_available': ['לבן', 'שחור', 'כחול', 'אדום'],
             'sizes_available': ['330ml'],
             'stock_quantity': 80,
-            'is_featured': True
+            'is_featured': True,
+            'can_print': True,
+            'max_print_width': 18.0,
+            'max_print_height': 8.0
         },
         {
             'name': 'ספל נירוסטה',
@@ -126,7 +147,10 @@ def create_sample_data():
             'fabric_type': 'cotton',
             'colors_available': ['כסף', 'שחור', 'כחול'],
             'sizes_available': ['400ml'],
-            'stock_quantity': 35
+            'stock_quantity': 35,
+            'can_print': True,
+            'max_print_width': 20.0,
+            'max_print_height': 10.0
         },
         {
             'name': 'הדפסה על בד',
@@ -137,7 +161,10 @@ def create_sample_data():
             'fabric_type': 'polyester',
             'colors_available': ['צבעוני'],
             'sizes_available': ['30x40', '40x60', '60x80'],
-            'stock_quantity': 15
+            'stock_quantity': 15,
+            'can_print': True,
+            'max_print_width': 80.0,
+            'max_print_height': 60.0
         },
         {
             'name': 'הדפסה על נייר',
@@ -148,7 +175,10 @@ def create_sample_data():
             'fabric_type': 'cotton',
             'colors_available': ['צבעוני'],
             'sizes_available': ['A4', 'A3', 'A2'],
-            'stock_quantity': 60
+            'stock_quantity': 60,
+            'can_print': True,
+            'max_print_width': 42.0,
+            'max_print_height': 29.7
         }
     ]
 
@@ -167,11 +197,21 @@ def create_sample_data():
                     'sizes_available': prod_data['sizes_available'],
                     'stock_quantity': prod_data['stock_quantity'],
                     'is_featured': prod_data.get('is_featured', False),
-                    'is_active': True
+                    'is_active': True,
+                    'can_print': prod_data.get('can_print', True),
+                    'max_print_width': prod_data.get('max_print_width'),
+                    'max_print_height': prod_data.get('max_print_height')
                 }
             )
             if created:
-                print(f'נוצר מוצר: {product.name}')
+                print(f'נוצר מוצר: {product.name} - מידות הדפסה: {product.max_print_width}x{product.max_print_height} ס"מ')
+            else:
+                # עדכון מוצר קיים עם השדות החדשים
+                product.can_print = prod_data.get('can_print', True)
+                product.max_print_width = prod_data.get('max_print_width')
+                product.max_print_height = prod_data.get('max_print_height')
+                product.save()
+                print(f'עודכן מוצר: {product.name} - מידות הדפסה: {product.max_print_width}x{product.max_print_height} ס"מ')
         except Exception as e:
             print(f'שגיאה ביצירת מוצר {prod_data["name"]}: {e}')
 

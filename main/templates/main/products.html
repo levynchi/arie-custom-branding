@@ -150,6 +150,17 @@
                                 <small>{{ product.get_fabric_type_display }}</small>
                             </div>
                         </div>
+                        {% if product.can_print and product.max_print_width and product.max_print_height %}
+                        <div class="row mt-2">
+                            <div class="col-12">
+                                <small class="text-muted">מידות הדפסה מקסימליות:</small><br>
+                                <small class="text-primary">
+                                    <i class="fas fa-expand-arrows-alt me-1"></i>
+                                    {{ product.max_print_width }}x{{ product.max_print_height }} ס"מ
+                                </small>
+                            </div>
+                        </div>
+                        {% endif %}
                     </div>
                     
                     <div class="product-colors mb-2">

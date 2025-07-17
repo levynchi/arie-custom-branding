@@ -42,6 +42,10 @@ class Product(models.Model):
     is_active = models.BooleanField(default=True, verbose_name='פעיל')
     is_featured = models.BooleanField(default=False, verbose_name='מוצר מומלץ')
     stock_quantity = models.IntegerField(default=0, verbose_name='כמות במלאי')
+    # מידות הדפסה מקסימליות (בסנטימטרים)
+    max_print_width = models.FloatField(null=True, blank=True, verbose_name='רוחב הדפסה מקסימלי (ס"מ)')
+    max_print_height = models.FloatField(null=True, blank=True, verbose_name='גובה הדפסה מקסימלי (ס"מ)')
+    can_print = models.BooleanField(default=True, verbose_name='ניתן להדפסה')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
