@@ -254,6 +254,23 @@ def generate_ai_design(request):
             if not prompt:
                 return JsonResponse({'success': False, 'error': 'חסר תיאור עיצוב'})
             
+            # Get product dimensions if product_id is provided
+            max_width = 396.8  # Default width in pixels
+            max_height = 453.5  # Default height in pixels
+            
+            if product_id:
+                try:
+                    product = Product.objects.get(id=product_id, is_active=True)
+                    if product.can_print and product.max_print_width and product.max_print_height:
+                        # Convert cm to pixels at 300 DPI
+                        # 1 cm = 300/2.54 pixels at 300 DPI ≈ 118.11 pixels
+                        cm_to_pixels_300dpi = 300 / 2.54
+                        max_width = product.max_print_width * cm_to_pixels_300dpi
+                        max_height = product.max_print_height * cm_to_pixels_300dpi
+                        product_name = product.name
+                except Product.DoesNotExist:
+                    pass
+            
             # Build enhanced prompt for the AI
             enhanced_prompt = f"""
             Create a high-quality graphic design element only (NOT the product itself) based on: {prompt}
@@ -261,12 +278,14 @@ def generate_ai_design(request):
             IMPORTANT REQUIREMENTS:
             1. Create ONLY the graphic/design element - DO NOT include the product (bag, hat, shirt, etc.)
             2. If user mentions a product (bag, hat, shirt, etc.), create only the graphic that would go ON that product
-            3. Maximum dimensions: 396.8 pixels width x 453.5 pixels height
+            3. Maximum dimensions: {max_width:.0f} pixels width x {max_height:.0f} pixels height at 300 DPI
             4. PNG format with transparent background (no background at all)
-            5. Ultra-high quality and sharp details for printing
+            5. Ultra-high quality and sharp details for printing at 300 DPI resolution
             6. High contrast design suitable for textile printing
             7. Professional and clean design
             8. Vector-style or high-resolution graphic suitable for screen printing
+            9. Colors should be optimized for CMYK printing process
+            10. Ensure design works well in both RGB (screen) and CMYK (print) color spaces
             
             Examples:
             - If user says "logo for a bag" → create only the logo graphic, not the bag
@@ -274,7 +293,8 @@ def generate_ai_design(request):
             - If user says "text for a shirt" → create only the text graphic, not the shirt
             
             Create a standalone graphic design element that can be printed on any product.
-            Focus on the graphic content only, with transparent background, optimized for printing.
+            Focus on the graphic content only, with transparent background, optimized for 300 DPI printing.
+            Use colors that translate well to CMYK printing process for professional textile printing.
             """
             
             # Generate image using OpenAI DALL-E API
@@ -324,33 +344,57 @@ def generate_ai_design(request):
                             if image.mode != 'RGBA':
                                 image = image.convert('RGBA')
                             
-                            # Resize to the specified dimensions (396.8 x 453.5 pixels)
-                            # Round to nearest integer pixels
-                            target_size = (397, 454)  # Rounded from 396.8 x 453.5
+                            # Calculate target size based on product dimensions
+                            target_size = (int(max_width), int(max_height))
                             
                             # Resize with high quality resampling
                             image = image.resize(target_size, Image.Resampling.LANCZOS)
                             
-                            # Save the processed image to a BytesIO buffer
+                            # Set DPI to 300 for print quality
+                            image.info['dpi'] = (300, 300)
+                            
+                            # Save the processed image to a BytesIO buffer with 300 DPI
                             output_buffer = io.BytesIO()
-                            image.save(output_buffer, format='PNG', optimize=True, quality=100)
+                            image.save(output_buffer, format='PNG', optimize=True, quality=100, dpi=(300, 300))
                             output_buffer.seek(0)
                             
-                            # Create unique filename
-                            filename = f"ai_design_{uuid.uuid4().hex}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+                            # Also create a CMYK version for printing
+                            cmyk_buffer = io.BytesIO()
+                            # Convert RGBA to RGB first (remove alpha channel with white background for CMYK)
+                            rgb_image = Image.new('RGB', image.size, (255, 255, 255))
+                            rgb_image.paste(image, mask=image.split()[-1])  # Use alpha channel as mask
                             
-                            # Save to media directory
-                            file_path = os.path.join('ai_designs', filename)
-                            saved_path = default_storage.save(file_path, ContentFile(output_buffer.getvalue()))
+                            # Convert RGB to CMYK
+                            cmyk_image = rgb_image.convert('CMYK')
+                            cmyk_image.save(cmyk_buffer, format='TIFF', dpi=(300, 300), compression='lzw')
+                            cmyk_buffer.seek(0)
                             
-                            # Get full URL
-                            full_url = request.build_absolute_uri(default_storage.url(saved_path))
+                            # Create unique filenames
+                            base_filename = f"ai_design_{uuid.uuid4().hex}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                            png_filename = f"{base_filename}.png"
+                            cmyk_filename = f"{base_filename}_cmyk.tif"
+                            
+                            # Save PNG version to media directory
+                            png_file_path = os.path.join('ai_designs', png_filename)
+                            png_saved_path = default_storage.save(png_file_path, ContentFile(output_buffer.getvalue()))
+                            
+                            # Save CMYK version to media directory
+                            cmyk_file_path = os.path.join('ai_designs', cmyk_filename)
+                            cmyk_saved_path = default_storage.save(cmyk_file_path, ContentFile(cmyk_buffer.getvalue()))
+                            
+                            # Get full URLs
+                            png_url = request.build_absolute_uri(default_storage.url(png_saved_path))
+                            cmyk_url = request.build_absolute_uri(default_storage.url(cmyk_saved_path))
                             
                             return JsonResponse({
                                 'success': True,
-                                'image_url': full_url,
-                                'filename': filename,
-                                'dimensions': f'{target_size[0]}x{target_size[1]} pixels'
+                                'image_url': png_url,
+                                'cmyk_url': cmyk_url,
+                                'filename': png_filename,
+                                'cmyk_filename': cmyk_filename,
+                                'dimensions': f'{target_size[0]}x{target_size[1]} pixels',
+                                'dpi': '300 DPI',
+                                'max_print_size': f'{max_width/118.11:.1f}x{max_height/118.11:.1f} cm'
                             })
                             
                         except Exception as img_error:

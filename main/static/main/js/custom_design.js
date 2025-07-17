@@ -416,7 +416,27 @@ async function generateAIDesign() {
             if (promptFromSidebar) promptFromSidebar.value = '';
             if (promptFromTop) promptFromTop.value = '';
             
-            alert('עיצוב נוצר בהצלחה!');
+            // Show success message with details
+            let message = 'עיצוב נוצר בהצלחה!\n';
+            message += `מידות: ${data.dimensions}\n`;
+            message += `רזולוציה: ${data.dpi}\n`;
+            if (data.max_print_size) {
+                message += `מידות הדפסה: ${data.max_print_size}\n`;
+            }
+            if (data.cmyk_url) {
+                message += 'קובץ CMYK להדפסה זמין';
+            }
+            
+            alert(message);
+            
+            // Optional: Add download links for both files
+            if (data.cmyk_url) {
+                console.log('PNG file:', data.image_url);
+                console.log('CMYK file:', data.cmyk_url);
+                
+                // You can add download buttons here if needed
+                // addDownloadButtons(data.image_url, data.cmyk_url);
+            }
         } else {
             alert('שגיאה ביצירת העיצוב: ' + data.error);
         }
