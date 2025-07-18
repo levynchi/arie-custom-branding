@@ -243,7 +243,7 @@ def save_design(request):
 
 @csrf_exempt
 def generate_ai_design(request):
-    """יצירת עיצוב באמצעות AI"""
+    """יצירת עיצוב באמצעות AI - Freepik Integration"""
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
@@ -481,28 +481,27 @@ def generate_ai_design(request):
             
             print(f"🎯 DEBUG: Final prompt for image generation: '{enhanced_prompt}'")
             
-            # Generate image using Stability AI (Stable Diffusion XL)
+            # Generate image using Freepik AI API
             try:
-                # Note: You'll need to get a Stability AI API key and add it to settings
-                api_key = getattr(settings, 'STABILITY_API_KEY', None)
+                # Use Freepik AI API instead of Stability AI
+                api_key = getattr(settings, 'FREEPIK_API_KEY', None)
                 
                 # Debug: Print API key status
-                print(f"Stability API Key status: {'Found' if api_key else 'Not found'}")
+                print(f"Freepik API Key status: {'Found' if api_key else 'Not found'}")
                 print(f"API Key length: {len(api_key) if api_key else 0}")
                 
                 if not api_key:
                     return JsonResponse({
                         'success': False, 
-                        'error': 'Stability AI service not configured. Please add STABILITY_API_KEY to your .env file.'
+                        'error': 'Freepik AI service not configured. Please add FREEPIK_API_KEY to your .env file.'
                     })
                 
                 headers = {
-                    'Authorization': f'Bearer {api_key}',
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
+                    'X-Freepik-API-Key': api_key,
+                    'Content-Type': 'application/json'
                 }
                 
-                # Stability AI payload for SDXL - ultra simplified for exact literal results
+                # Freepik AI payload - optimized for accurate results
                 # Check if the prompt contains numbers and make it more specific
                 if any(char.isdigit() for char in enhanced_prompt):
                     # If there's a number, be very explicit about "exactly X items"
@@ -520,27 +519,21 @@ def generate_ai_design(request):
                         enhanced_prompt = "simple minimalist design"
                     final_prompt = f"a {enhanced_prompt}, clean vector style, isolated on white background"
                 
-                print(f"🚀 DEBUG: Final prompt being sent to Stability AI: '{final_prompt}'")
+                print(f"🚀 DEBUG: Final prompt being sent to Freepik AI: '{final_prompt}'")
                 
                 payload = {
-                    'text_prompts': [
-                        {
-                            'text': final_prompt,
-                            'weight': 1.0
-                        }
-                    ],
-                    'cfg_scale': 5,  # Very low for literal interpretation
-                    'height': 1024,
-                    'width': 1024,
-                    'samples': 1,
-                    'steps': 20  # Minimal steps for simple, direct results
+                    "prompt": final_prompt,
+                    "num_images": 1,
+                    "image": {
+                        "size": "1024x1024"
+                    }
                 }
                 
                 print(f"📦 DEBUG: Full payload: {payload}")
-                print(f"🌐 DEBUG: Sending request to Stability AI...")
+                print(f"🌐 DEBUG: Sending request to Freepik AI...")
                 
                 response = requests.post(
-                    'https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/text-to-image',
+                    'https://api.freepik.com/v1/ai/text-to-image',
                     headers=headers,
                     json=payload,
                     timeout=60  # Increased timeout to 60 seconds
@@ -551,13 +544,15 @@ def generate_ai_design(request):
                 if response.status_code == 200:
                     print(f"✅ DEBUG: Success! Image generated successfully")
                     result = response.json()
-                    # Stability AI returns images in artifacts array
-                    if 'artifacts' in result and len(result['artifacts']) > 0:
-                        # The image is base64 encoded
-                        image_data = result['artifacts'][0]['base64']
+                    # Freepik returns images in data array
+                    if 'data' in result and len(result['data']) > 0:
+                        # Get the image URL from Freepik response
+                        image_url = result['data'][0]['url']
                         
-                        # Decode base64 image
-                        image_bytes = base64.b64decode(image_data)
+                        # Download the image from Freepik
+                        img_response = requests.get(image_url, timeout=30)
+                        if img_response.status_code == 200:
+                            image_bytes = img_response.content
                         
                         # Process the image directly from bytes
                         try:
@@ -603,7 +598,7 @@ def generate_ai_design(request):
                             cmyk_buffer.seek(0)
                             
                             # Create unique filenames
-                            base_filename = f"ai_design_{uuid.uuid4().hex}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                            base_filename = f"freepik_design_{uuid.uuid4().hex}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
                             png_filename = f"{base_filename}.png"
                             cmyk_filename = f"{base_filename}_cmyk.tif"
                             
@@ -627,14 +622,15 @@ def generate_ai_design(request):
                                 'cmyk_filename': cmyk_filename,
                                 'dimensions': f'{target_size[0]}x{target_size[1]} pixels',
                                 'dpi': '300 DPI',
-                                'max_print_size': f'{max_width/118.11:.1f}x{max_height/118.11:.1f} cm'
+                                'max_print_size': f'{max_width/118.11:.1f}x{max_height/118.11:.1f} cm',
+                                'ai_service': 'Freepik AI'
                             }
                             
                             # Add text designs if any were generated
                             if 'text_designs' in locals() and text_designs:
                                 response_data['text_designs'] = text_designs
                                 response_data['has_text'] = True
-                                response_data['message'] = 'נוצרו גם עיצובי טקסט נפרדים שניתן לשלב עם התמונה'
+                                response_data['message'] = 'נוצרו גם עיצובי טקסט נפרדים שניתן לשלב עם התמונה (Freepik AI)'
                             
                             return JsonResponse(response_data)
                             
@@ -643,32 +639,37 @@ def generate_ai_design(request):
                                 'success': False,
                                 'error': f'Image processing error: {str(img_error)}'
                             })
+                        else:
+                            return JsonResponse({
+                                'success': False,
+                                'error': f'Failed to download image from Freepik: HTTP {img_response.status_code}'
+                            })
                     else:
                         return JsonResponse({
                             'success': False,
-                            'error': 'No artifacts in Stability AI response'
+                            'error': 'No images in Freepik AI response'
                         })
                 else:
                     try:
                         error_response = response.json()
-                        error_msg = error_response.get('message', 'Unknown Stability AI error')
-                        error_id = error_response.get('id', 'unknown')
+                        error_msg = error_response.get('message', 'Unknown Freepik AI error')
+                        error_code = error_response.get('code', 'unknown')
                         
                         # Log detailed error information
-                        print(f"Stability AI API Error: {error_id} - {error_msg}")
+                        print(f"Freepik AI API Error: {error_code} - {error_msg}")
                         print(f"Response status: {response.status_code}")
                         print(f"Response text: {response.text}")
                         
                         return JsonResponse({
                             'success': False,
-                            'error': f'Stability AI service error: {error_msg}',
-                            'error_code': error_id,
+                            'error': f'Freepik AI service error: {error_msg}',
+                            'error_code': error_code,
                             'status_code': response.status_code
                         })
                     except:
                         return JsonResponse({
                             'success': False,
-                            'error': f'Stability AI service error: HTTP {response.status_code} - {response.text}'
+                            'error': f'Freepik AI service error: HTTP {response.status_code} - {response.text}'
                         })
                     
             except requests.exceptions.RequestException as e:

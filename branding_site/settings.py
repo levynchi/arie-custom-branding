@@ -145,12 +145,15 @@ CRISPY_TEMPLATE_PACK = "bootstrap5"
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # OpenAI API settings
-# Stability AI API Configuration
+# Freepik AI API Configuration (PRIMARY)
+FREEPIK_API_KEY = os.getenv('FREEPIK_API_KEY', '')
+
+# Stability AI API Configuration (BACKUP)
 STABILITY_API_KEY = os.getenv('STABILITY_API_KEY', '')
 
 # Adobe Firefly API Configuration (not used currently)
 ADOBE_FIREFLY_API_KEY = os.getenv('ADOBE_FIREFLY_API_KEY', '')
 ADOBE_CLIENT_ID = os.getenv('ADOBE_CLIENT_ID', '')
 
-# OpenAI API Key (backup)
+# OpenAI API Key (for translations)
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
