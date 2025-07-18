@@ -271,84 +271,317 @@ def generate_ai_design(request):
                 except Product.DoesNotExist:
                     pass
             
-            # Build enhanced prompt for the AI
-            enhanced_prompt = f"""
-            Create a high-quality graphic design element only (NOT the product itself) based on: {prompt}
+            # Build very simple prompt for accurate results - translate Hebrew to English
+            # First, translate Hebrew text to English using OpenAI
+            def translate_hebrew_to_english(text):
+                """Translate Hebrew text to English using OpenAI API"""
+                try:
+                    openai_api_key = getattr(settings, 'OPENAI_API_KEY', None)
+                    if not openai_api_key:
+                        print("⚠️ DEBUG: OpenAI API key not found, using fallback translation")
+                        # Fallback to simple dictionary
+                        hebrew_translations = {
+                            'בננה': 'banana',
+                            'תפוח': 'apple',
+                            'עוגה': 'cake',
+                            'פרח': 'flower',
+                            'עץ': 'tree',
+                            'בית': 'house',
+                            'כלב': 'dog',
+                            'חתול': 'cat',
+                            'שמש': 'sun',
+                            'ירח': 'moon',
+                            'לוגו': 'logo',
+                            'אקרובטית': 'acrobat',
+                            'כיתוב': 'text',
+                            'רוצה': 'want',
+                            'תייצר': 'create',
+                            'של': 'of'
+                        }
+                        
+                        # Try to find Hebrew words in the text
+                        for hebrew_word, english_word in hebrew_translations.items():
+                            if hebrew_word in text:
+                                return english_word
+                        return text
+                    
+                    # Use OpenAI for translation
+                    headers = {
+                        'Authorization': f'Bearer {openai_api_key}',
+                        'Content-Type': 'application/json'
+                    }
+                    
+                    payload = {
+                        'model': 'gpt-3.5-turbo',
+                        'messages': [
+                            {
+                                'role': 'system',
+                                'content': 'You are a translator. Translate Hebrew text to English completely and accurately. Preserve all details from the original text including specific requests for logos, text content, and design elements. Translate the entire sentence, not just the main object.'
+                            },
+                            {
+                                'role': 'user',
+                                'content': f'Translate this Hebrew text to English completely: "{text}"'
+                            }
+                        ],
+                        'max_tokens': 150,  # Increased to allow longer translations
+                        'temperature': 0.1
+                    }
+                    
+                    response = requests.post(
+                        'https://api.openai.com/v1/chat/completions',
+                        headers=headers,
+                        json=payload,
+                        timeout=10
+                    )
+                    
+                    if response.status_code == 200:
+                        result = response.json()
+                        translated_text = result['choices'][0]['message']['content'].strip()
+                        print(f"🌐 DEBUG: OpenAI translation: '{text}' → '{translated_text}'")
+                        return translated_text
+                    else:
+                        print(f"⚠️ DEBUG: OpenAI API error: {response.status_code}")
+                        return text
+                        
+                except Exception as e:
+                    print(f"⚠️ DEBUG: Translation error: {str(e)}")
+                    return text
             
-            IMPORTANT REQUIREMENTS:
-            1. Create ONLY the graphic/design element - DO NOT include the product (bag, hat, shirt, etc.)
-            2. If user mentions a product (bag, hat, shirt, etc.), create only the graphic that would go ON that product
-            3. Maximum dimensions: {max_width:.0f} pixels width x {max_height:.0f} pixels height at 300 DPI
-            4. PNG format with transparent background (no background at all)
-            5. Ultra-high quality and sharp details for printing at 300 DPI resolution
-            6. High contrast design suitable for textile printing
-            7. Professional and clean design
-            8. Vector-style or high-resolution graphic suitable for screen printing
-            9. Colors should be optimized for CMYK printing process
-            10. Ensure design works well in both RGB (screen) and CMYK (print) color spaces
+            # Check if the prompt is a Hebrew word we can translate
+            simple_prompt = prompt.strip()
+            print(f"🔍 DEBUG: Original prompt from user: '{prompt}'")
+            print(f"🔍 DEBUG: Cleaned prompt: '{simple_prompt}'")
             
-            Examples:
-            - If user says "logo for a bag" → create only the logo graphic, not the bag
-            - If user says "design for a hat" → create only the design graphic, not the hat
-            - If user says "text for a shirt" → create only the text graphic, not the shirt
+            # Try to translate Hebrew to English
+            enhanced_prompt = translate_hebrew_to_english(simple_prompt)
+            print(f"✅ DEBUG: Final translated prompt: '{enhanced_prompt}'")
             
-            Create a standalone graphic design element that can be printed on any product.
-            Focus on the graphic content only, with transparent background, optimized for 300 DPI printing.
-            Use colors that translate well to CMYK printing process for professional textile printing.
-            """
+            # Check for text/typography requests and extract text content
+            def extract_text_requests(prompt):
+                """Extract text content from prompts that request typography/logos with text"""
+                import re
+                
+                # Patterns to detect text requests
+                text_patterns = [
+                    r'with.*?text[:\s]*["\']([^"\']+)["\']',  # with text: "content"
+                    r'with.*?writing[:\s]*["\']([^"\']+)["\']',  # with writing: "content"
+                    r'עם.*?כיתוב[:\s]*["\']([^"\']+)["\']',  # Hebrew: עם כיתוב: "content"
+                    r'כיתוב[:\s]*:?[:\s]*([^,\.]+)',  # Hebrew: כיתוב: content
+                    r'text[:\s]*:?[:\s]*([A-Z\s]+)',  # text: CONTENT
+                    r'כיתוב\s+של\s+(.+?)(?:\s*$|\s*[,.;])',  # Hebrew: כיתוב של content
+                    r'with\s+text\s+of\s+(.+?)(?:\s*$|\s*[,.;])',  # with text of content
+                    r'text\s+of\s+(.+?)(?:\s*$|\s*[,.;])',  # text of content
+                    r'עם\s+כיתוב\s+של\s+(.+?)(?:\s*$|\s*[,.;])',  # עם כיתוב של content
+                ]
+                
+                extracted_texts = []
+                visual_prompt = prompt
+                
+                for pattern in text_patterns:
+                    matches = re.findall(pattern, prompt, re.IGNORECASE)
+                    for match in matches:
+                        text_content = match.strip()
+                        if text_content and len(text_content) > 1:
+                            extracted_texts.append(text_content)
+                            # Remove the text specification from the visual prompt
+                            visual_prompt = re.sub(pattern, '', visual_prompt, flags=re.IGNORECASE)
+                
+                # Clean up the visual prompt
+                visual_prompt = re.sub(r'with\s+text\s*:?\s*', '', visual_prompt, flags=re.IGNORECASE)
+                visual_prompt = re.sub(r'עם\s+כיתוב\s*:?\s*', '', visual_prompt, flags=re.IGNORECASE)
+                visual_prompt = re.sub(r'כיתוב\s+של\s+.+', '', visual_prompt, flags=re.IGNORECASE)
+                visual_prompt = re.sub(r'with\s+text\s+of\s+.+', '', visual_prompt, flags=re.IGNORECASE)
+                visual_prompt = re.sub(r'text\s+of\s+.+', '', visual_prompt, flags=re.IGNORECASE)
+                visual_prompt = re.sub(r'עם\s+כיתוב\s+של\s+.+', '', visual_prompt, flags=re.IGNORECASE)
+                visual_prompt = re.sub(r'logo\s+of\s+', '', visual_prompt, flags=re.IGNORECASE)
+                visual_prompt = visual_prompt.strip()
+                
+                return extracted_texts, visual_prompt
             
-            # Generate image using OpenAI DALL-E API
+            # Extract text requests from the prompt
+            extracted_texts, visual_only_prompt = extract_text_requests(enhanced_prompt)
+            
+            if extracted_texts:
+                print(f"📝 DEBUG: Extracted text content: {extracted_texts}")
+                print(f"🎨 DEBUG: Visual-only prompt: '{visual_only_prompt}'")
+                
+                # Generate text design using OpenAI for typography
+                def generate_text_design(text_content):
+                    """Generate SVG text design using OpenAI"""
+                    try:
+                        openai_api_key = getattr(settings, 'OPENAI_API_KEY', None)
+                        if not openai_api_key:
+                            return None
+                        
+                        headers = {
+                            'Authorization': f'Bearer {openai_api_key}',
+                            'Content-Type': 'application/json'
+                        }
+                        
+                        payload = {
+                            'model': 'gpt-4',
+                            'messages': [
+                                {
+                                    'role': 'system',
+                                    'content': 'You are a typography designer. Create clean SVG code for text designs. Return only valid SVG code with proper text elements, fonts, and styling. Make it professional and print-ready.'
+                                },
+                                {
+                                    'role': 'user',
+                                    'content': f'Create a clean, professional SVG design for the text: "{text_content}". Make it bold, readable, and suitable for printing on products. Use appropriate font sizes and styling.'
+                                }
+                            ],
+                            'max_tokens': 1000,
+                            'temperature': 0.3
+                        }
+                        
+                        response = requests.post(
+                            'https://api.openai.com/v1/chat/completions',
+                            headers=headers,
+                            json=payload,
+                            timeout=15
+                        )
+                        
+                        if response.status_code == 200:
+                            result = response.json()
+                            svg_content = result['choices'][0]['message']['content'].strip()
+                            print(f"🎨 DEBUG: Generated SVG typography: {svg_content[:100]}...")
+                            return svg_content
+                        else:
+                            print(f"⚠️ DEBUG: OpenAI typography API error: {response.status_code}")
+                            return None
+                            
+                    except Exception as e:
+                        print(f"⚠️ DEBUG: Typography generation error: {str(e)}")
+                        return None
+                
+                # Generate typography for the extracted texts
+                text_designs = []
+                for text in extracted_texts:
+                    svg_design = generate_text_design(text)
+                    if svg_design:
+                        text_designs.append({
+                            'text': text,
+                            'svg': svg_design
+                        })
+                
+                # If we have both visual elements and text, create combined design
+                if visual_only_prompt and len(visual_only_prompt) > 2:
+                    enhanced_prompt = visual_only_prompt
+                    print(f"🔄 DEBUG: Will generate visual element separately and combine with text")
+                else:
+                    # If it's only text, return the typography design
+                    if text_designs:
+                        return JsonResponse({
+                            'success': True,
+                            'text_design': True,
+                            'text_content': extracted_texts,
+                            'svg_designs': text_designs,
+                            'message': 'עוצב טקסט בלבד. ניתן להוסיף אלמנטים ויזואליים נוספים.'
+                        })
+            
+            print(f"🎯 DEBUG: Final prompt for image generation: '{enhanced_prompt}'")
+            
+            # Generate image using Stability AI (Stable Diffusion XL)
             try:
-                # Note: You'll need to get an OpenAI API key and add it to settings
-                api_key = getattr(settings, 'OPENAI_API_KEY', None)
+                # Note: You'll need to get a Stability AI API key and add it to settings
+                api_key = getattr(settings, 'STABILITY_API_KEY', None)
+                
+                # Debug: Print API key status
+                print(f"Stability API Key status: {'Found' if api_key else 'Not found'}")
+                print(f"API Key length: {len(api_key) if api_key else 0}")
+                
                 if not api_key:
                     return JsonResponse({
                         'success': False, 
-                        'error': 'AI service not configured. Please contact administrator.'
+                        'error': 'Stability AI service not configured. Please add STABILITY_API_KEY to your .env file.'
                     })
                 
                 headers = {
                     'Authorization': f'Bearer {api_key}',
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
                 }
+                
+                # Stability AI payload for SDXL - ultra simplified for exact literal results
+                # Check if the prompt contains numbers and make it more specific
+                if any(char.isdigit() for char in enhanced_prompt):
+                    # If there's a number, be very explicit about "exactly X items"
+                    import re
+                    numbers = re.findall(r'\d+', enhanced_prompt)
+                    if numbers:
+                        number = numbers[0]
+                        item = re.sub(r'\d+\s*', '', enhanced_prompt).strip()
+                        final_prompt = f"exactly {number} {item}, isolated on white background, simple illustration"
+                    else:
+                        final_prompt = f"a {enhanced_prompt} on white background"
+                # For visual elements (text already extracted), create clean visual design
+                else:
+                    if not enhanced_prompt or len(enhanced_prompt) < 3:
+                        enhanced_prompt = "simple minimalist design"
+                    final_prompt = f"a {enhanced_prompt}, clean vector style, isolated on white background"
+                
+                print(f"🚀 DEBUG: Final prompt being sent to Stability AI: '{final_prompt}'")
                 
                 payload = {
-                    'model': 'dall-e-3',
-                    'prompt': enhanced_prompt,
-                    'n': 1,
-                    'size': '1024x1024',  # OpenAI supports: 1024x1024, 1792x1024, 1024x1792
-                    'quality': 'hd',      # Changed to 'hd' for higher quality
-                    'response_format': 'url'
+                    'text_prompts': [
+                        {
+                            'text': final_prompt,
+                            'weight': 1.0
+                        }
+                    ],
+                    'cfg_scale': 5,  # Very low for literal interpretation
+                    'height': 1024,
+                    'width': 1024,
+                    'samples': 1,
+                    'steps': 20  # Minimal steps for simple, direct results
                 }
                 
+                print(f"📦 DEBUG: Full payload: {payload}")
+                print(f"🌐 DEBUG: Sending request to Stability AI...")
+                
                 response = requests.post(
-                    'https://api.openai.com/v1/images/generations',
+                    'https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/text-to-image',
                     headers=headers,
                     json=payload,
-                    timeout=30
+                    timeout=60  # Increased timeout to 60 seconds
                 )
                 
+                print(f"📡 DEBUG: Response status code: {response.status_code}")
+                
                 if response.status_code == 200:
+                    print(f"✅ DEBUG: Success! Image generated successfully")
                     result = response.json()
-                    image_url = result['data'][0]['url']
-                    
-                    # Download the generated image
-                    image_response = requests.get(image_url, timeout=30)
-                    if image_response.status_code == 200:
-                        # Process the image to resize it to the required dimensions
+                    # Stability AI returns images in artifacts array
+                    if 'artifacts' in result and len(result['artifacts']) > 0:
+                        # The image is base64 encoded
+                        image_data = result['artifacts'][0]['base64']
+                        
+                        # Decode base64 image
+                        image_bytes = base64.b64decode(image_data)
+                        
+                        # Process the image directly from bytes
                         try:
                             # Open the image with PIL
-                            image = Image.open(io.BytesIO(image_response.content))
+                            image = Image.open(io.BytesIO(image_bytes))
                             
                             # Convert to RGBA to ensure transparency support
                             if image.mode != 'RGBA':
                                 image = image.convert('RGBA')
                             
+                            # Remove white background and make it transparent
+                            image = remove_white_background(image)
+                            
                             # Calculate target size based on product dimensions
                             target_size = (int(max_width), int(max_height))
                             
-                            # Resize with high quality resampling
+                            # Resize with high quality resampling for smooth curves
+                            # Use LANCZOS for the best quality when resizing
                             image = image.resize(target_size, Image.Resampling.LANCZOS)
+                            
+                            # Apply additional smoothing filter for better edges
+                            from PIL import ImageFilter
+                            # Apply a slight smoothing filter to reduce pixelation
+                            image = image.filter(ImageFilter.SMOOTH_MORE)
                             
                             # Set DPI to 300 for print quality
                             image.info['dpi'] = (300, 300)
@@ -386,7 +619,7 @@ def generate_ai_design(request):
                             png_url = request.build_absolute_uri(default_storage.url(png_saved_path))
                             cmyk_url = request.build_absolute_uri(default_storage.url(cmyk_saved_path))
                             
-                            return JsonResponse({
+                            response_data = {
                                 'success': True,
                                 'image_url': png_url,
                                 'cmyk_url': cmyk_url,
@@ -395,7 +628,15 @@ def generate_ai_design(request):
                                 'dimensions': f'{target_size[0]}x{target_size[1]} pixels',
                                 'dpi': '300 DPI',
                                 'max_print_size': f'{max_width/118.11:.1f}x{max_height/118.11:.1f} cm'
-                            })
+                            }
+                            
+                            # Add text designs if any were generated
+                            if 'text_designs' in locals() and text_designs:
+                                response_data['text_designs'] = text_designs
+                                response_data['has_text'] = True
+                                response_data['message'] = 'נוצרו גם עיצובי טקסט נפרדים שניתן לשלב עם התמונה'
+                            
+                            return JsonResponse(response_data)
                             
                         except Exception as img_error:
                             return JsonResponse({
@@ -405,14 +646,30 @@ def generate_ai_design(request):
                     else:
                         return JsonResponse({
                             'success': False,
-                            'error': 'Failed to download generated image'
+                            'error': 'No artifacts in Stability AI response'
                         })
                 else:
-                    error_msg = response.json().get('error', {}).get('message', 'Unknown API error')
-                    return JsonResponse({
-                        'success': False,
-                        'error': f'AI service error: {error_msg}'
-                    })
+                    try:
+                        error_response = response.json()
+                        error_msg = error_response.get('message', 'Unknown Stability AI error')
+                        error_id = error_response.get('id', 'unknown')
+                        
+                        # Log detailed error information
+                        print(f"Stability AI API Error: {error_id} - {error_msg}")
+                        print(f"Response status: {response.status_code}")
+                        print(f"Response text: {response.text}")
+                        
+                        return JsonResponse({
+                            'success': False,
+                            'error': f'Stability AI service error: {error_msg}',
+                            'error_code': error_id,
+                            'status_code': response.status_code
+                        })
+                    except:
+                        return JsonResponse({
+                            'success': False,
+                            'error': f'Stability AI service error: HTTP {response.status_code} - {response.text}'
+                        })
                     
             except requests.exceptions.RequestException as e:
                 return JsonResponse({
@@ -431,3 +688,47 @@ def generate_ai_design(request):
             return JsonResponse({'success': False, 'error': str(e)})
     
     return JsonResponse({'success': False, 'error': 'Method not allowed'})
+
+def remove_white_background(image):
+    """Remove white and light gray background from image and make it transparent while preserving smooth edges"""
+    # Convert to RGBA if not already
+    if image.mode != 'RGBA':
+        image = image.convert('RGBA')
+    
+    # Get image data
+    data = image.getdata()
+    
+    # Create new image data with transparency
+    new_data = []
+    for item in data:
+        r, g, b = item[0], item[1], item[2]
+        
+        # Calculate brightness and color variance
+        brightness = (r + g + b) / 3
+        color_variance = max(r, g, b) - min(r, g, b)
+        
+        # If pixel is very close to white (brightness > 245 and low variance)
+        if brightness > 245 and color_variance < 15:
+            # Make it completely transparent
+            new_data.append((255, 255, 255, 0))
+        # If pixel is light gray/white (brightness > 230 and low variance)
+        elif brightness > 230 and color_variance < 25:
+            # Make it mostly transparent
+            new_data.append((255, 255, 255, 0))
+        # If pixel is medium gray (brightness > 200 and low variance)
+        elif brightness > 200 and color_variance < 30:
+            # Make it partially transparent based on how gray it is
+            alpha = max(0, int((200 - brightness) * 8))
+            new_data.append((r, g, b, alpha))
+        # If pixel is light but has some color (anti-aliasing pixels)
+        elif brightness > 180 and color_variance < 40:
+            # Make it partially transparent to preserve smooth edges
+            alpha = max(0, int((180 - brightness) * 6))
+            new_data.append((r, g, b, alpha))
+        else:
+            # Keep original pixel with full opacity
+            new_data.append(item)
+    
+    # Update image data
+    image.putdata(new_data)
+    return image
