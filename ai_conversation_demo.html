@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>דוגמה למערכת שיחות AI</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            direction: rtl;
+            margin: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .chat-interface {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 20px;
+            height: 80vh;
+        }
+        
+        .conversations-sidebar {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            overflow-y: auto;
+        }
+        
+        .conversation-item {
+            padding: 10px;
+            border: 1px solid #eee;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .conversation-item:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .main-chat {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .conversation-history {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .message {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 8px;
+        }
+        
+        .message.user {
+            background-color: #e3f2fd;
+            text-align: right;
+        }
+        
+        .message.ai {
+            background-color: #f1f8e9;
+            text-align: left;
+        }
+        
+        .message-image {
+            max-width: 200px;
+            height: auto;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        
+        .chat-input {
+            padding: 15px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .prompt-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .send-button {
+            padding: 10px 20px;
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .send-button:hover {
+            background-color: #1976D2;
+        }
+        
+        .new-chat-button {
+            width: 100%;
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+        
+        .generated-image-container {
+            margin: 10px 0;
+        }
+        
+        .generated-image {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .image-info {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f5f5f5;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>מערכת שיחות AI עם היסטוריה</h1>
+        
+        <div class="chat-interface">
+            <!-- סרגל צדי עם רשימת שיחות -->
+            <div class="conversations-sidebar">
+                <button class="new-chat-button" onclick="startNewConversation()">
+                    שיחה חדשה
+                </button>
+                <h3>שיחות קודמות</h3>
+                <div id="conversations-list">
+                    <div class="loading">טוען שיחות...</div>
+                </div>
+            </div>
+            
+            <!-- אזור השיחה הראשי -->
+            <div class="main-chat">
+                <div id="conversation-history" class="conversation-history">
+                    <div class="message ai">
+                        <div class="message-content">
+                            שלום! אני כאן לעזור לך ליצור עיצובים מדהימים. 
+                            תן לי לדעת מה תרצה ליצור ואני אזכור את כל השיחה שלנו.
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="chat-input">
+                    <input 
+                        type="text" 
+                        id="prompt-input" 
+                        class="prompt-input" 
+                        placeholder="תאר מה תרצה ליצור... (למשל: 'בננה אחת')"
+                        onkeypress="handleEnterKey(event)"
+                    >
+                    <button class="send-button" onclick="sendPrompt()">
+                        שלח
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- אזור הצגת התמונה שנוצרה -->
+        <div id="generated-image-container" class="generated-image-container"></div>
+    </div>
+
+    <script>
+        // הכללת הקוד מהקובץ הקודם
+        let currentConversationId = null;
+
+        // פונקציה לטיפול בלחיצת Enter
+        function handleEnterKey(event) {
+            if (event.key === 'Enter') {
+                sendPrompt();
+            }
+        }
+
+        // פונקציה לשליחת פרומפט
+        async function sendPrompt() {
+            const input = document.getElementById('prompt-input');
+            const prompt = input.value.trim();
+            
+            if (!prompt) return;
+            
+            // הצגת ההודעה של המשתמש
+            addMessageToHistory('user', prompt);
+            
+            // ניקוי השדה
+            input.value = '';
+            
+            // שליחה ל-AI
+            await generateAIImageWithHistory(prompt);
+        }
+
+        // פונקציה להוספת הודעה להיסטוריה
+        function addMessageToHistory(type, content, imageUrl = null) {
+            const historyDiv = document.getElementById('conversation-history');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            
+            let messageHTML = `<div class="message-content">${content}</div>`;
+            if (imageUrl) {
+                messageHTML += `<img src="${imageUrl}" class="message-image">`;
+            }
+            messageHTML += `<small>${new Date().toLocaleString('he-IL')}</small>`;
+            
+            messageDiv.innerHTML = messageHTML;
+            historyDiv.appendChild(messageDiv);
+            
+            // גלילה למטה
+            historyDiv.scrollTop = historyDiv.scrollHeight;
+        }
+
+        // פונקציה מעודכנת ליצירת תמונה
+        async function generateAIImageWithHistory(prompt, productId = null) {
+            const requestData = {
+                prompt: prompt,
+                product_id: productId,
+                conversation_id: currentConversationId
+            };
+            
+            // הצגת הודעת טעינה
+            addMessageToHistory('ai', 'מייצר תמונה...');
+            
+            try {
+                const response = await fetch('/generate-ai-design/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify(requestData)
+                });
+                
+                const result = await response.json();
+                
+                // הסרת הודעת הטעינה
+                const historyDiv = document.getElementById('conversation-history');
+                historyDiv.removeChild(historyDiv.lastElementChild);
+                
+                if (result.success) {
+                    currentConversationId = result.conversation_id;
+                    
+                    // הצגת התגובה של ה-AI
+                    addMessageToHistory('ai', 'נוצרה תמונה!', result.image_url);
+                    
+                    // עדכון רשימת השיחות
+                    loadConversationsList();
+                    
+                } else {
+                    addMessageToHistory('ai', `שגיאה: ${result.error}`);
+                }
+                
+            } catch (error) {
+                addMessageToHistory('ai', `שגיאת רשת: ${error.message}`);
+            }
+        }
+
+        // פונקציות נוספות...
+        async function loadConversationsList() {
+            try {
+                const response = await fetch('/ai-conversations/');
+                const result = await response.json();
+                
+                if (result.success) {
+                    displayConversationsList(result.conversations);
+                }
+            } catch (error) {
+                console.error('שגיאה בטעינת שיחות:', error);
+            }
+        }
+
+        function displayConversationsList(conversations) {
+            const listContainer = document.getElementById('conversations-list');
+            if (!conversations || conversations.length === 0) {
+                listContainer.innerHTML = '<div>אין שיחות קודמות</div>';
+                return;
+            }
+            
+            listContainer.innerHTML = conversations.map(conv => `
+                <div class="conversation-item" onclick="loadConversationHistory(${conv.id})">
+                    <h4>${conv.title}</h4>
+                    <p>מוצר: ${conv.product_name || 'כללי'}</p>
+                    <p>הודעות: ${conv.message_count}</p>
+                    <small>${new Date(conv.updated_at).toLocaleString('he-IL')}</small>
+                </div>
+            `).join('');
+        }
+
+        async function loadConversationHistory(conversationId) {
+            try {
+                const response = await fetch(`/conversation-history/?conversation_id=${conversationId}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    currentConversationId = conversationId;
+                    displayConversationHistory(result.conversation, result.messages);
+                }
+            } catch (error) {
+                console.error('שגיאה בטעינת היסטוריה:', error);
+            }
+        }
+
+        function displayConversationHistory(conversation, messages) {
+            const historyContainer = document.getElementById('conversation-history');
+            historyContainer.innerHTML = `
+                <div class="message ai">
+                    <div class="message-content">טעינת שיחה: ${conversation.title}</div>
+                </div>
+            `;
+            
+            messages.forEach(msg => {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${msg.type}`;
+                
+                let content = msg.content;
+                if (msg.image_url) {
+                    content += `<br><img src="${msg.image_url}" class="message-image">`;
+                }
+                
+                messageDiv.innerHTML = `
+                    <div class="message-content">${content}</div>
+                    <small>${new Date(msg.created_at).toLocaleString('he-IL')}</small>
+                `;
+                
+                historyContainer.appendChild(messageDiv);
+            });
+            
+            historyContainer.scrollTop = historyContainer.scrollHeight;
+        }
+
+        function startNewConversation() {
+            currentConversationId = null;
+            const historyDiv = document.getElementById('conversation-history');
+            historyDiv.innerHTML = `
+                <div class="message ai">
+                    <div class="message-content">
+                        שיחה חדשה התחילה! מה תרצה ליצור היום?
+                    </div>
+                </div>
+            `;
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // טעינה ראשונית
+        document.addEventListener('DOMContentLoaded', function() {
+            loadConversationsList();
+        });
+    </script>
+</body>
+</html>

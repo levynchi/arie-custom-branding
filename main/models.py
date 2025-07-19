@@ -87,6 +87,53 @@ class CustomDesign(models.Model):
     def __str__(self):
         return f"{self.name} - {self.user.username}"
 
+class AIConversation(models.Model):
+    """מודל לשמירת היסטוריית שיחות AI"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='ai_conversations', null=True, blank=True)
+    session_id = models.CharField(max_length=100, verbose_name='מזהה סשן')  # For anonymous users
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='ai_conversations', null=True, blank=True, verbose_name='מוצר')
+    title = models.CharField(max_length=200, verbose_name='כותרת השיחה', blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = 'שיחת AI'
+        verbose_name_plural = 'שיחות AI'
+        ordering = ['-updated_at']
+    
+    def __str__(self):
+        user_info = self.user.username if self.user else f"Anonymous-{self.session_id[:8]}"
+        return f"{user_info} - {self.title or 'שיחה חדשה'}"
+
+class AIMessage(models.Model):
+    """הודעות בשיחת AI"""
+    MESSAGE_TYPES = [
+        ('user', 'משתמש'),
+        ('ai', 'AI'),
+        ('system', 'מערכת'),
+    ]
+    
+    conversation = models.ForeignKey(AIConversation, on_delete=models.CASCADE, related_name='messages')
+    message_type = models.CharField(max_length=10, choices=MESSAGE_TYPES, verbose_name='סוג הודעה')
+    content = models.TextField(verbose_name='תוכן ההודעה')
+    
+    # AI response specific fields
+    translated_prompt = models.TextField(blank=True, verbose_name='פרומפט מתורגם')
+    generated_image_url = models.URLField(blank=True, verbose_name='קישור לתמונה')
+    ai_service_used = models.CharField(max_length=50, blank=True, verbose_name='שירות AI בשימוש')
+    
+    # Metadata
+    metadata = models.JSONField(default=dict, verbose_name='מטא-דאטה')  # Store additional info
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        verbose_name = 'הודעת AI'
+        verbose_name_plural = 'הודעות AI'
+        ordering = ['created_at']
+    
+    def __str__(self):
+        return f"{self.get_message_type_display()}: {self.content[:50]}..."
+
 class BusinessQuote(models.Model):
     STATUS_CHOICES = [
         ('pending', 'ממתין'),

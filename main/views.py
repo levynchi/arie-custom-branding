@@ -5,8 +5,9 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.db.models import Q
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.db import models
 import json
 import requests
 import base64
@@ -19,8 +20,16 @@ from PIL import Image
 import io
 from datetime import datetime
 import uuid
-from .models import Category, Product, BusinessQuote, CustomDesign
+from .models import Category, Product, BusinessQuote, CustomDesign, AIConversation, AIMessage
 from .forms import BusinessQuoteForm, ContactForm
+from .utils import (
+    translate_hebrew_to_english, 
+    translate_hebrew_to_english_with_context,
+    clean_prompt_for_ai, 
+    create_freepik_payload, 
+    send_flux_request,
+    get_or_create_session_id
+)
 
 def home(request):
     """דף הבית עם מוצרים מומלצים וקטגוריות"""
@@ -187,6 +196,7 @@ def contact(request):
 
 def custom_design(request):
     """דף עיצוב אישי"""
+    import time
     products = Product.objects.filter(is_active=True)
     categories = Category.objects.filter(is_active=True)
     
@@ -203,6 +213,7 @@ def custom_design(request):
         'products': products,
         'categories': categories,
         'selected_product': selected_product,
+        'current_time': int(time.time()),  # Cache busting
     }
     return render(request, 'main/custom_design.html', context)
 
@@ -243,16 +254,67 @@ def save_design(request):
 
 @csrf_exempt
 def generate_ai_design(request):
-    """יצירת עיצוב באמצעות AI - Freepik Integration"""
+    """יצירת עיצוב באמצעות AI עם תמיכה בהיסטוריית שיחה"""
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
             prompt = data.get('prompt', '')
             product_id = data.get('product_id', '')
             product_name = data.get('product_name', '')
+            conversation_id = data.get('conversation_id', None)  # מזהה שיחה קיימת
+            
+            print(f"📥 DEBUG: POST request received")
+            print(f"📥 DEBUG: prompt: '{prompt}'")
+            print(f"📥 DEBUG: product_id: {product_id}")
+            print(f"📥 DEBUG: conversation_id: {conversation_id}")
             
             if not prompt:
                 return JsonResponse({'success': False, 'error': 'חסר תיאור עיצוב'})
+            
+            # Get session ID for all users (authenticated and anonymous)
+            session_id = get_or_create_session_id(request)
+            print(f"🔑 DEBUG: Session ID: {session_id}")
+            
+            # Get or create conversation
+            conversation = None
+            print(f"🔍 DEBUG: conversation_id parameter: {conversation_id}")
+            if conversation_id:
+                # Try to get existing conversation
+                try:
+                    if request.user.is_authenticated:
+                        conversation = AIConversation.objects.get(
+                            id=conversation_id, 
+                            user=request.user
+                        )
+                    else:
+                        conversation = AIConversation.objects.get(
+                            id=conversation_id,
+                            session_id=session_id,
+                            user__isnull=True
+                        )
+                except AIConversation.DoesNotExist:
+                    conversation = None
+            
+            # Create new conversation if none exists
+            if not conversation:
+                # Set title based on first prompt (truncated)
+                title = prompt[:50] + "..." if len(prompt) > 50 else prompt
+                conversation = AIConversation.objects.create(
+                    user=request.user if request.user.is_authenticated else None,
+                    session_id=session_id,  # כל המשתמשים יקבלו session_id
+                    product_id=product_id if product_id else None,
+                    title=title
+                )
+                print(f"🆕 DEBUG: Created NEW conversation {conversation.id}")
+            else:
+                print(f"🔄 DEBUG: Using EXISTING conversation {conversation.id}")
+            
+            # Save user message
+            user_message = AIMessage.objects.create(
+                conversation=conversation,
+                message_type='user',
+                content=prompt
+            )
             
             # Get product dimensions if product_id is provided
             max_width = 396.8  # Default width in pixels
@@ -268,419 +330,316 @@ def generate_ai_design(request):
                         max_width = product.max_print_width * cm_to_pixels_300dpi
                         max_height = product.max_print_height * cm_to_pixels_300dpi
                         product_name = product.name
+                        # Update conversation product if not set
+                        if not conversation.product:
+                            conversation.product = product
+                            conversation.save()
                 except Product.DoesNotExist:
                     pass
             
-            # Build very simple prompt for accurate results - translate Hebrew to English
-            # First, translate Hebrew text to English using OpenAI
-            def translate_hebrew_to_english(text):
-                """Translate Hebrew text to English using OpenAI API"""
-                try:
-                    openai_api_key = getattr(settings, 'OPENAI_API_KEY', None)
-                    if not openai_api_key:
-                        print("⚠️ DEBUG: OpenAI API key not found, using fallback translation")
-                        # Fallback to simple dictionary
-                        hebrew_translations = {
-                            'בננה': 'banana',
-                            'תפוח': 'apple',
-                            'עוגה': 'cake',
-                            'פרח': 'flower',
-                            'עץ': 'tree',
-                            'בית': 'house',
-                            'כלב': 'dog',
-                            'חתול': 'cat',
-                            'שמש': 'sun',
-                            'ירח': 'moon',
-                            'לוגו': 'logo',
-                            'אקרובטית': 'acrobat',
-                            'כיתוב': 'text',
-                            'רוצה': 'want',
-                            'תייצר': 'create',
-                            'של': 'of'
-                        }
-                        
-                        # Try to find Hebrew words in the text
-                        for hebrew_word, english_word in hebrew_translations.items():
-                            if hebrew_word in text:
-                                return english_word
-                        return text
+            # Build very simple prompt for accurate results - translate Hebrew to English with context
+            simple_prompt = prompt.strip()
+            print(f"🔍 DEBUG: Original prompt from user: '{prompt}'")
+            print(f"🔍 DEBUG: Cleaned prompt: '{simple_prompt}'")
+            print(f"🔄 DEBUG: Using conversation ID: {conversation.id}")
+            
+            print("🚀 DEBUG: Starting translation process...")
+            
+            # Try to translate Hebrew to English using the utils function with context
+            print(f"📤 DEBUG: Sending to OpenAI for translation with context: '{simple_prompt}'")
+            print("=" * 50)
+            print("📤 OPENAI REQUEST:")
+            print(f"Input text: '{simple_prompt}'")
+            print(f"Conversation context: {conversation.messages.count()} messages")
+            print("=" * 50)
+            
+            print("🔍 DEBUG: About to call translate_hebrew_to_english_with_context...")
+            try:
+                enhanced_prompt = translate_hebrew_to_english_with_context(simple_prompt, conversation)
+                print("🔍 DEBUG: translate_hebrew_to_english_with_context returned!")
+            except Exception as translation_error:
+                print(f"💥 DEBUG: Translation failed with error: {str(translation_error)}")
+                print("🔄 DEBUG: Using original prompt instead")
+                enhanced_prompt = simple_prompt
+            
+            print("=" * 50)
+            print("📥 OPENAI RESPONSE:")
+            print(f"Original: '{simple_prompt}'")
+            print(f"Translated: '{enhanced_prompt}'")
+            print("=" * 50)
+            
+            print(f"✅ DEBUG: Final translated prompt: '{enhanced_prompt}'")
+            
+            # בדיקה אם יש שינוי בפועל
+            if enhanced_prompt == simple_prompt:
+                print("⚠️ DEBUG: WARNING - Translation returned same text! Translation may have failed.")
+            else:
+                print("✅ DEBUG: Translation successful - text changed.")
+            
+            # בדיקה אם יש תמונה קודמת לשימוש כבסיס לשינוי
+            last_image_url = None
+            modification_keywords = [
+                "שנה", "שני", "אדום", "כחול", "ירוק", "צהוב", "סגול", "כתום", "ורוד", "שחור", "לבן",
+                "זווית", "מזווית", "צד", "מימין", "משמאל", "מלמעלה", "מלמטה", 
+                "גדול יותר", "קטן יותר", "עבה יותר", "דק יותר",
+                "עם", "בלי", "הוסף", "הסר", "החלף"
+            ]
+            
+            # חיפוש התמונה האחרונה מההיסטוריה
+            print(f"🔍 DEBUG: Searching for previous images in conversation {conversation.id}")
+            print(f"🔍 DEBUG: Total messages in conversation: {conversation.messages.count()}")
+            
+            all_ai_messages = conversation.messages.filter(message_type='ai')
+            print(f"🔍 DEBUG: AI messages found: {all_ai_messages.count()}")
+            
+            ai_messages_with_images = all_ai_messages.filter(generated_image_url__isnull=False)
+            print(f"🔍 DEBUG: AI messages with images: {ai_messages_with_images.count()}")
+            
+            last_ai_message = ai_messages_with_images.order_by('-created_at').first()
+            
+            if last_ai_message:
+                last_image_url = last_ai_message.generated_image_url
+                print(f"🔍 DEBUG: Found last image: {last_image_url}")
+            else:
+                print("🔍 DEBUG: No previous images found in this conversation")
+            
+            # בדיקה אם הבקשה היא לשינוי תמונה קיימת
+            is_modification_request = any(keyword in simple_prompt.lower() for keyword in modification_keywords)
+            
+            print(f"🎯 DEBUG: Is modification request: {is_modification_request}")
+            print(f"🎯 DEBUG: Has previous image: {bool(last_image_url)}")
+            print(f"🎯 DEBUG: Final prompt for image generation: '{enhanced_prompt}'")
+            
+            # Generate image using AI - Choose between Flux Pro 1.1 or Freepik AI
+            try:
+                # Check which AI service to use
+                replicate_api_key = getattr(settings, 'REPLICATE_API_KEY', None)
+                freepik_api_key = getattr(settings, 'FREEPIK_API_KEY', None)
+                
+                print(f"Replicate API Key: {'Found' if replicate_api_key else 'Not found'}")
+                print(f"Freepik API Key: {'Found' if freepik_api_key else 'Not found'}")
+                
+                # Prefer Flux Pro 1.1 if available, otherwise use Freepik
+                if replicate_api_key:
+                    print("🚀 Using Flux Pro 1.1 via Replicate")
                     
-                    # Use OpenAI for translation
+                    # Use clean prompt for Flux
+                    clean_prompt = clean_prompt_for_ai(enhanced_prompt)
+                    
+                    # בדיקה אם להשתמש ב-Image-to-Image או Text-to-Image
+                    if is_modification_request and last_image_url:
+                        print("🔄 Using Image-to-Image mode with previous image")
+                        print(f"📷 Base image URL: {last_image_url}")
+                        
+                        # Send to Flux Pro 1.1 with image input (Image-to-Image)
+                        # Use lower strength to preserve shape/angle, change only color
+                        image_url = send_flux_request(clean_prompt, replicate_api_key, init_image=last_image_url, strength=0.4)
+                    else:
+                        print("✨ Using Text-to-Image mode")
+                        # Send to Flux Pro 1.1 (Text-to-Image)
+                        image_url = send_flux_request(clean_prompt, replicate_api_key)
+                    
+                    # Download the image from Flux
+                    img_response = requests.get(image_url, timeout=30)
+                    if img_response.status_code == 200:
+                        image_bytes = img_response.content
+                        ai_service_name = "Flux Pro 1.1"
+                    else:
+                        raise Exception(f'Failed to download image from Flux URL: {img_response.status_code}')
+                        
+                elif freepik_api_key:
+                    print("🎨 Using Freepik AI (fallback)")
+                    
+                    # Use Freepik AI as fallback
                     headers = {
-                        'Authorization': f'Bearer {openai_api_key}',
+                        'X-Freepik-API-Key': freepik_api_key,
                         'Content-Type': 'application/json'
                     }
                     
-                    payload = {
-                        'model': 'gpt-3.5-turbo',
-                        'messages': [
-                            {
-                                'role': 'system',
-                                'content': 'You are a translator. Translate Hebrew text to English completely and accurately. Preserve all details from the original text including specific requests for logos, text content, and design elements. Translate the entire sentence, not just the main object.'
-                            },
-                            {
-                                'role': 'user',
-                                'content': f'Translate this Hebrew text to English completely: "{text}"'
-                            }
-                        ],
-                        'max_tokens': 150,  # Increased to allow longer translations
-                        'temperature': 0.1
-                    }
+                    final_prompt = enhanced_prompt
+                    clean_prompt = clean_prompt_for_ai(final_prompt)
+                    
+                    # בחירת API endpoint ו-payload לפי סוג הבקשה
+                    if is_modification_request and last_image_url:
+                        print("🔄 Using Freepik Image-to-Image mode")
+                        print(f"📷 Base image URL: {last_image_url}")
+                        
+                        # שימוש ב-Image-to-Image API של Freepik
+                        api_url = 'https://api.freepik.com/v1/ai/image-to-image'
+                        payload = {
+                            'prompt': clean_prompt,
+                            'image': last_image_url,
+                            'strength': 0.7,  # רמת השינוי (0.1=שינוי קל, 1.0=שינוי מלא)
+                            'num_inference_steps': 50,
+                            'guidance_scale': 7.5,
+                            'num_images': 1
+                        }
+                    else:
+                        print("✨ Using Freepik Text-to-Image mode")
+                        # שימוש ב-Text-to-Image API רגיל של Freepik
+                        api_url = 'https://api.freepik.com/v1/ai/text-to-image'
+                        payload = create_freepik_payload(clean_prompt)
+                    
+                    print("=" * 60)
+                    print("📤 FREEPIK API REQUEST:")
+                    print(f"URL: {api_url}")
+                    print(f"Payload: {payload}")
+                    print("=" * 60)
                     
                     response = requests.post(
-                        'https://api.openai.com/v1/chat/completions',
+                        api_url,
                         headers=headers,
                         json=payload,
-                        timeout=10
+                        timeout=60
                     )
                     
                     if response.status_code == 200:
                         result = response.json()
-                        translated_text = result['choices'][0]['message']['content'].strip()
-                        print(f"🌐 DEBUG: OpenAI translation: '{text}' → '{translated_text}'")
-                        return translated_text
-                    else:
-                        print(f"⚠️ DEBUG: OpenAI API error: {response.status_code}")
-                        return text
-                        
-                except Exception as e:
-                    print(f"⚠️ DEBUG: Translation error: {str(e)}")
-                    return text
-            
-            # Check if the prompt is a Hebrew word we can translate
-            simple_prompt = prompt.strip()
-            print(f"🔍 DEBUG: Original prompt from user: '{prompt}'")
-            print(f"🔍 DEBUG: Cleaned prompt: '{simple_prompt}'")
-            
-            # Try to translate Hebrew to English
-            enhanced_prompt = translate_hebrew_to_english(simple_prompt)
-            print(f"✅ DEBUG: Final translated prompt: '{enhanced_prompt}'")
-            
-            # Check for text/typography requests and extract text content
-            def extract_text_requests(prompt):
-                """Extract text content from prompts that request typography/logos with text"""
-                import re
-                
-                # Patterns to detect text requests
-                text_patterns = [
-                    r'with.*?text[:\s]*["\']([^"\']+)["\']',  # with text: "content"
-                    r'with.*?writing[:\s]*["\']([^"\']+)["\']',  # with writing: "content"
-                    r'עם.*?כיתוב[:\s]*["\']([^"\']+)["\']',  # Hebrew: עם כיתוב: "content"
-                    r'כיתוב[:\s]*:?[:\s]*([^,\.]+)',  # Hebrew: כיתוב: content
-                    r'text[:\s]*:?[:\s]*([A-Z\s]+)',  # text: CONTENT
-                    r'כיתוב\s+של\s+(.+?)(?:\s*$|\s*[,.;])',  # Hebrew: כיתוב של content
-                    r'with\s+text\s+of\s+(.+?)(?:\s*$|\s*[,.;])',  # with text of content
-                    r'text\s+of\s+(.+?)(?:\s*$|\s*[,.;])',  # text of content
-                    r'עם\s+כיתוב\s+של\s+(.+?)(?:\s*$|\s*[,.;])',  # עם כיתוב של content
-                ]
-                
-                extracted_texts = []
-                visual_prompt = prompt
-                
-                for pattern in text_patterns:
-                    matches = re.findall(pattern, prompt, re.IGNORECASE)
-                    for match in matches:
-                        text_content = match.strip()
-                        if text_content and len(text_content) > 1:
-                            extracted_texts.append(text_content)
-                            # Remove the text specification from the visual prompt
-                            visual_prompt = re.sub(pattern, '', visual_prompt, flags=re.IGNORECASE)
-                
-                # Clean up the visual prompt
-                visual_prompt = re.sub(r'with\s+text\s*:?\s*', '', visual_prompt, flags=re.IGNORECASE)
-                visual_prompt = re.sub(r'עם\s+כיתוב\s*:?\s*', '', visual_prompt, flags=re.IGNORECASE)
-                visual_prompt = re.sub(r'כיתוב\s+של\s+.+', '', visual_prompt, flags=re.IGNORECASE)
-                visual_prompt = re.sub(r'with\s+text\s+of\s+.+', '', visual_prompt, flags=re.IGNORECASE)
-                visual_prompt = re.sub(r'text\s+of\s+.+', '', visual_prompt, flags=re.IGNORECASE)
-                visual_prompt = re.sub(r'עם\s+כיתוב\s+של\s+.+', '', visual_prompt, flags=re.IGNORECASE)
-                visual_prompt = re.sub(r'logo\s+of\s+', '', visual_prompt, flags=re.IGNORECASE)
-                visual_prompt = visual_prompt.strip()
-                
-                return extracted_texts, visual_prompt
-            
-            # Extract text requests from the prompt
-            extracted_texts, visual_only_prompt = extract_text_requests(enhanced_prompt)
-            
-            if extracted_texts:
-                print(f"📝 DEBUG: Extracted text content: {extracted_texts}")
-                print(f"🎨 DEBUG: Visual-only prompt: '{visual_only_prompt}'")
-                
-                # Generate text design using OpenAI for typography
-                def generate_text_design(text_content):
-                    """Generate SVG text design using OpenAI"""
-                    try:
-                        openai_api_key = getattr(settings, 'OPENAI_API_KEY', None)
-                        if not openai_api_key:
-                            return None
-                        
-                        headers = {
-                            'Authorization': f'Bearer {openai_api_key}',
-                            'Content-Type': 'application/json'
-                        }
-                        
-                        payload = {
-                            'model': 'gpt-4',
-                            'messages': [
-                                {
-                                    'role': 'system',
-                                    'content': 'You are a typography designer. Create clean SVG code for text designs. Return only valid SVG code with proper text elements, fonts, and styling. Make it professional and print-ready.'
-                                },
-                                {
-                                    'role': 'user',
-                                    'content': f'Create a clean, professional SVG design for the text: "{text_content}". Make it bold, readable, and suitable for printing on products. Use appropriate font sizes and styling.'
-                                }
-                            ],
-                            'max_tokens': 1000,
-                            'temperature': 0.3
-                        }
-                        
-                        response = requests.post(
-                            'https://api.openai.com/v1/chat/completions',
-                            headers=headers,
-                            json=payload,
-                            timeout=15
-                        )
-                        
-                        if response.status_code == 200:
-                            result = response.json()
-                            svg_content = result['choices'][0]['message']['content'].strip()
-                            print(f"🎨 DEBUG: Generated SVG typography: {svg_content[:100]}...")
-                            return svg_content
+                        if 'data' in result and len(result['data']) > 0:
+                            first_item = result['data'][0]
+                            if 'base64' in first_item:
+                                image_bytes = base64.b64decode(first_item['base64'])
+                                ai_service_name = "Freepik AI"
+                            else:
+                                raise Exception("No base64 data in Freepik response")
                         else:
-                            print(f"⚠️ DEBUG: OpenAI typography API error: {response.status_code}")
-                            return None
-                            
-                    except Exception as e:
-                        print(f"⚠️ DEBUG: Typography generation error: {str(e)}")
-                        return None
-                
-                # Generate typography for the extracted texts
-                text_designs = []
-                for text in extracted_texts:
-                    svg_design = generate_text_design(text)
-                    if svg_design:
-                        text_designs.append({
-                            'text': text,
-                            'svg': svg_design
-                        })
-                
-                # If we have both visual elements and text, create combined design
-                if visual_only_prompt and len(visual_only_prompt) > 2:
-                    enhanced_prompt = visual_only_prompt
-                    print(f"🔄 DEBUG: Will generate visual element separately and combine with text")
+                            raise Exception("No images in Freepik AI response")
+                    else:
+                        error_response = response.json() if response.text else {}
+                        error_msg = error_response.get('message', 'Unknown Freepik AI error')
+                        raise Exception(f'Freepik AI service error: {error_msg}')
                 else:
-                    # If it's only text, return the typography design
-                    if text_designs:
-                        return JsonResponse({
-                            'success': True,
-                            'text_design': True,
-                            'text_content': extracted_texts,
-                            'svg_designs': text_designs,
-                            'message': 'עוצב טקסט בלבד. ניתן להוסיף אלמנטים ויזואליים נוספים.'
-                        })
-            
-            print(f"🎯 DEBUG: Final prompt for image generation: '{enhanced_prompt}'")
-            
-            # Generate image using Freepik AI API
-            try:
-                # Use Freepik AI API instead of Stability AI
-                api_key = getattr(settings, 'FREEPIK_API_KEY', None)
-                
-                # Debug: Print API key status
-                print(f"Freepik API Key status: {'Found' if api_key else 'Not found'}")
-                print(f"API Key length: {len(api_key) if api_key else 0}")
-                
-                if not api_key:
                     return JsonResponse({
                         'success': False, 
-                        'error': 'Freepik AI service not configured. Please add FREEPIK_API_KEY to your .env file.'
+                        'error': 'No AI service configured. Please add REPLICATE_API_KEY (preferred) or FREEPIK_API_KEY to your settings.'
                     })
+                # Process the image (common for both services)
+                print("=" * 60)
+                print("🖼️ IMAGE PROCESSING:")
+                print(f"Raw image size: {len(image_bytes)} bytes")
+                print(f"AI Service: {ai_service_name}")
+                print("Starting PIL image processing...")
+                print("=" * 60)
                 
-                headers = {
-                    'X-Freepik-API-Key': api_key,
-                    'Content-Type': 'application/json'
-                }
-                
-                # Freepik AI payload - optimized for accurate results
-                # Check if the prompt contains numbers and make it more specific
-                if any(char.isdigit() for char in enhanced_prompt):
-                    # If there's a number, be very explicit about "exactly X items"
-                    import re
-                    numbers = re.findall(r'\d+', enhanced_prompt)
-                    if numbers:
-                        number = numbers[0]
-                        item = re.sub(r'\d+\s*', '', enhanced_prompt).strip()
-                        final_prompt = f"exactly {number} {item}, isolated on white background, simple illustration"
-                    else:
-                        final_prompt = f"a {enhanced_prompt} on white background"
-                # For visual elements (text already extracted), create clean visual design
-                else:
-                    if not enhanced_prompt or len(enhanced_prompt) < 3:
-                        enhanced_prompt = "simple minimalist design"
-                    final_prompt = f"a {enhanced_prompt}, clean vector style, isolated on white background"
-                
-                print(f"🚀 DEBUG: Final prompt being sent to Freepik AI: '{final_prompt}'")
-                
-                payload = {
-                    "prompt": final_prompt,
-                    "num_images": 1,
-                    "image": {
-                        "size": "1024x1024"
-                    }
-                }
-                
-                print(f"📦 DEBUG: Full payload: {payload}")
-                print(f"🌐 DEBUG: Sending request to Freepik AI...")
-                
-                response = requests.post(
-                    'https://api.freepik.com/v1/ai/text-to-image',
-                    headers=headers,
-                    json=payload,
-                    timeout=60  # Increased timeout to 60 seconds
-                )
-                
-                print(f"📡 DEBUG: Response status code: {response.status_code}")
-                
-                if response.status_code == 200:
-                    print(f"✅ DEBUG: Success! Image generated successfully")
-                    result = response.json()
-                    # Freepik returns images in data array
-                    if 'data' in result and len(result['data']) > 0:
-                        # Get the image URL from Freepik response
-                        image_url = result['data'][0]['url']
-                        
-                        # Download the image from Freepik
-                        img_response = requests.get(image_url, timeout=30)
-                        if img_response.status_code == 200:
-                            image_bytes = img_response.content
-                        
-                        # Process the image directly from bytes
-                        try:
-                            # Open the image with PIL
-                            image = Image.open(io.BytesIO(image_bytes))
-                            
-                            # Convert to RGBA to ensure transparency support
-                            if image.mode != 'RGBA':
-                                image = image.convert('RGBA')
-                            
-                            # Remove white background and make it transparent
-                            image = remove_white_background(image)
-                            
-                            # Calculate target size based on product dimensions
-                            target_size = (int(max_width), int(max_height))
-                            
-                            # Resize with high quality resampling for smooth curves
-                            # Use LANCZOS for the best quality when resizing
-                            image = image.resize(target_size, Image.Resampling.LANCZOS)
-                            
-                            # Apply additional smoothing filter for better edges
-                            from PIL import ImageFilter
-                            # Apply a slight smoothing filter to reduce pixelation
-                            image = image.filter(ImageFilter.SMOOTH_MORE)
-                            
-                            # Set DPI to 300 for print quality
-                            image.info['dpi'] = (300, 300)
-                            
-                            # Save the processed image to a BytesIO buffer with 300 DPI
-                            output_buffer = io.BytesIO()
-                            image.save(output_buffer, format='PNG', optimize=True, quality=100, dpi=(300, 300))
-                            output_buffer.seek(0)
-                            
-                            # Also create a CMYK version for printing
-                            cmyk_buffer = io.BytesIO()
-                            # Convert RGBA to RGB first (remove alpha channel with white background for CMYK)
-                            rgb_image = Image.new('RGB', image.size, (255, 255, 255))
-                            rgb_image.paste(image, mask=image.split()[-1])  # Use alpha channel as mask
-                            
-                            # Convert RGB to CMYK
-                            cmyk_image = rgb_image.convert('CMYK')
-                            cmyk_image.save(cmyk_buffer, format='TIFF', dpi=(300, 300), compression='lzw')
-                            cmyk_buffer.seek(0)
-                            
-                            # Create unique filenames
-                            base_filename = f"freepik_design_{uuid.uuid4().hex}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-                            png_filename = f"{base_filename}.png"
-                            cmyk_filename = f"{base_filename}_cmyk.tif"
-                            
-                            # Save PNG version to media directory
-                            png_file_path = os.path.join('ai_designs', png_filename)
-                            png_saved_path = default_storage.save(png_file_path, ContentFile(output_buffer.getvalue()))
-                            
-                            # Save CMYK version to media directory
-                            cmyk_file_path = os.path.join('ai_designs', cmyk_filename)
-                            cmyk_saved_path = default_storage.save(cmyk_file_path, ContentFile(cmyk_buffer.getvalue()))
-                            
-                            # Get full URLs
-                            png_url = request.build_absolute_uri(default_storage.url(png_saved_path))
-                            cmyk_url = request.build_absolute_uri(default_storage.url(cmyk_saved_path))
-                            
-                            response_data = {
-                                'success': True,
-                                'image_url': png_url,
-                                'cmyk_url': cmyk_url,
-                                'filename': png_filename,
-                                'cmyk_filename': cmyk_filename,
-                                'dimensions': f'{target_size[0]}x{target_size[1]} pixels',
-                                'dpi': '300 DPI',
-                                'max_print_size': f'{max_width/118.11:.1f}x{max_height/118.11:.1f} cm',
-                                'ai_service': 'Freepik AI'
-                            }
-                            
-                            # Add text designs if any were generated
-                            if 'text_designs' in locals() and text_designs:
-                                response_data['text_designs'] = text_designs
-                                response_data['has_text'] = True
-                                response_data['message'] = 'נוצרו גם עיצובי טקסט נפרדים שניתן לשלב עם התמונה (Freepik AI)'
-                            
-                            return JsonResponse(response_data)
-                            
-                        except Exception as img_error:
-                            return JsonResponse({
-                                'success': False,
-                                'error': f'Image processing error: {str(img_error)}'
-                            })
-                        else:
-                            return JsonResponse({
-                                'success': False,
-                                'error': f'Failed to download image from Freepik: HTTP {img_response.status_code}'
-                            })
-                    else:
-                        return JsonResponse({
-                            'success': False,
-                            'error': 'No images in Freepik AI response'
-                        })
-                else:
-                    try:
-                        error_response = response.json()
-                        error_msg = error_response.get('message', 'Unknown Freepik AI error')
-                        error_code = error_response.get('code', 'unknown')
-                        
-                        # Log detailed error information
-                        print(f"Freepik AI API Error: {error_code} - {error_msg}")
-                        print(f"Response status: {response.status_code}")
-                        print(f"Response text: {response.text}")
-                        
-                        return JsonResponse({
-                            'success': False,
-                            'error': f'Freepik AI service error: {error_msg}',
-                            'error_code': error_code,
-                            'status_code': response.status_code
-                        })
-                    except:
-                        return JsonResponse({
-                            'success': False,
-                            'error': f'Freepik AI service error: HTTP {response.status_code} - {response.text}'
-                        })
+                try:
+                    # Open the image with PIL
+                    image = Image.open(io.BytesIO(image_bytes))
                     
-            except requests.exceptions.RequestException as e:
-                return JsonResponse({
-                    'success': False,
-                    'error': f'Network error: {str(e)}'
-                })
+                    # Convert to RGBA to ensure transparency support
+                    if image.mode != 'RGBA':
+                        image = image.convert('RGBA')
+                    
+                    # Remove white background and make it transparent
+                    image = remove_white_background(image)
+                    
+                    # Calculate target size based on product dimensions
+                    target_size = (int(max_width), int(max_height))
+                    
+                    # Resize with high quality resampling for smooth curves
+                    # Use LANCZOS for the best quality when resizing
+                    image = image.resize(target_size, Image.Resampling.LANCZOS)
+                    
+                    # Apply additional smoothing filter for better edges
+                    from PIL import ImageFilter
+                    # Apply a slight smoothing filter to reduce pixelation
+                    image = image.filter(ImageFilter.SMOOTH_MORE)
+                    
+                    # Set DPI to 300 for print quality
+                    image.info['dpi'] = (300, 300)
+                    
+                    # Save the processed image to a BytesIO buffer with 300 DPI
+                    output_buffer = io.BytesIO()
+                    image.save(output_buffer, format='PNG', optimize=True, quality=100, dpi=(300, 300))
+                    output_buffer.seek(0)
+                    
+                    # Also create a CMYK version for printing
+                    cmyk_buffer = io.BytesIO()
+                    # Convert RGBA to RGB first (remove alpha channel with white background for CMYK)
+                    rgb_image = Image.new('RGB', image.size, (255, 255, 255))
+                    rgb_image.paste(image, mask=image.split()[-1])  # Use alpha channel as mask
+                    
+                    # Convert RGB to CMYK
+                    cmyk_image = rgb_image.convert('CMYK')
+                    cmyk_image.save(cmyk_buffer, format='TIFF', dpi=(300, 300), compression='lzw')
+                    cmyk_buffer.seek(0)
+                    
+                    # Create unique filenames
+                    base_filename = f"ai_design_{uuid.uuid4().hex}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                    png_filename = f"{base_filename}.png"
+                    cmyk_filename = f"{base_filename}_cmyk.tif"
+                    
+                    print("=" * 60)
+                    print("💾 SAVING FILES:")
+                    print(f"PNG filename: {png_filename}")
+                    print(f"CMYK filename: {cmyk_filename}")
+                    print("=" * 60)
+                    
+                    # Save PNG version to media directory
+                    png_file_path = os.path.join('ai_designs', png_filename)
+                    png_saved_path = default_storage.save(png_file_path, ContentFile(output_buffer.getvalue()))
+                    
+                    # Save CMYK version to media directory
+                    cmyk_file_path = os.path.join('ai_designs', cmyk_filename)
+                    cmyk_saved_path = default_storage.save(cmyk_file_path, ContentFile(cmyk_buffer.getvalue()))
+                    
+                    # Get full URLs
+                    png_url = request.build_absolute_uri(default_storage.url(png_saved_path))
+                    cmyk_url = request.build_absolute_uri(default_storage.url(cmyk_saved_path))
+                    
+                    print("=" * 60)
+                    print("🎉 FINAL RESULT:")
+                    print(f"PNG URL: {png_url}")
+                    print(f"CMYK URL: {cmyk_url}")
+                    print(f"AI Service Used: {ai_service_name}")
+                    print("=" * 60)
+                    
+                    # Save AI response to conversation
+                    ai_message = AIMessage.objects.create(
+                        conversation=conversation,
+                        message_type='ai',
+                        content=f"Generated image: {png_filename}",
+                        translated_prompt=enhanced_prompt,
+                        generated_image_url=png_url,
+                        ai_service_used=ai_service_name,
+                        metadata={
+                            'cmyk_url': cmyk_url,
+                            'dimensions': f'{target_size[0]}x{target_size[1]} pixels',
+                            'dpi': '300 DPI',
+                            'max_print_size': f'{max_width/118.11:.1f}x{max_height/118.11:.1f} cm',
+                            'used_image_to_image': is_modification_request and bool(last_image_url),
+                            'base_image_url': last_image_url if (is_modification_request and last_image_url) else None,
+                            'modification_keywords_detected': [kw for kw in modification_keywords if kw in simple_prompt.lower()] if is_modification_request else []
+                        }
+                    )
+                    
+                    response_data = {
+                        'success': True,
+                        'image_url': png_url,
+                        'cmyk_url': cmyk_url,
+                        'filename': png_filename,
+                        'cmyk_filename': cmyk_filename,
+                        'dimensions': f'{target_size[0]}x{target_size[1]} pixels',
+                        'dpi': '300 DPI',
+                        'max_print_size': f'{max_width/118.11:.1f}x{max_height/118.11:.1f} cm',
+                        'ai_service': ai_service_name,
+                        'conversation_id': conversation.id,  # שליחת מזהה השיחה
+                        'conversation_title': conversation.title,
+                        'used_image_to_image': is_modification_request and bool(last_image_url),
+                        'base_image_url': last_image_url if (is_modification_request and last_image_url) else None
+                    }
+                    
+                    return JsonResponse(response_data)
+                    
+                except Exception as img_error:
+                    return JsonResponse({
+                        'success': False,
+                        'error': f'Image processing error: {str(img_error)}'
+                    })
+                    
             except Exception as e:
                 return JsonResponse({
                     'success': False,
-                    'error': f'Unexpected error: {str(e)}'
+                    'error': f'AI service error: {str(e)}'
                 })
                 
         except json.JSONDecodeError:
@@ -689,6 +648,114 @@ def generate_ai_design(request):
             return JsonResponse({'success': False, 'error': str(e)})
     
     return JsonResponse({'success': False, 'error': 'Method not allowed'})
+
+
+@csrf_exempt 
+def get_ai_conversations(request):
+    """קבלת רשימת שיחות AI של המשתמש"""
+    if request.method == 'GET':
+        try:
+            session_id = get_or_create_session_id(request)
+            
+            if request.user.is_authenticated:
+                # רשימת שיחות עבור משתמש מחובר (לפי user + session)
+                conversations = AIConversation.objects.filter(
+                    models.Q(user=request.user) | models.Q(session_id=session_id, user__isnull=True)
+                )
+            else:
+                # רשימת שיחות עבור משתמש אנונימי לפי session בלבד
+                conversations = AIConversation.objects.filter(session_id=session_id, user__isnull=True)
+            
+            conversations_data = []
+            for conv in conversations.order_by('-updated_at')[:20]:  # 20 שיחות אחרונות
+                last_message = conv.messages.order_by('-created_at').first()
+                conversations_data.append({
+                    'id': conv.id,
+                    'title': conv.title,
+                    'product_name': conv.product.name if conv.product else None,
+                    'created_at': conv.created_at.isoformat(),
+                    'updated_at': conv.updated_at.isoformat(),
+                    'message_count': conv.messages.count(),
+                    'last_message': last_message.content[:100] if last_message else None,
+                })
+            
+            return JsonResponse({
+                'success': True,
+                'conversations': conversations_data
+            })
+            
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'Method not allowed'})
+
+
+@csrf_exempt
+def get_conversation_history(request):
+    """קבלת היסטוריית שיחה ספציפית"""
+    if request.method == 'GET':
+        try:
+            conversation_id = request.GET.get('conversation_id')
+            if not conversation_id:
+                return JsonResponse({'success': False, 'error': 'חסר מזהה שיחה'})
+            
+            session_id = get_or_create_session_id(request)
+            
+            # Get conversation
+            if request.user.is_authenticated:
+                # חיפוש לפי user או session
+                conversation = AIConversation.objects.get(
+                    models.Q(id=conversation_id) & 
+                    (models.Q(user=request.user) | models.Q(session_id=session_id, user__isnull=True))
+                )
+            else:
+                # משתמש אנונימי - חיפוש לפי session בלבד
+                conversation = AIConversation.objects.get(
+                    id=conversation_id, 
+                    session_id=session_id,
+                    user__isnull=True
+                )
+            
+            # Get messages
+            messages = []
+            for message in conversation.messages.order_by('created_at'):
+                message_data = {
+                    'id': message.id,
+                    'type': message.message_type,
+                    'content': message.content,
+                    'created_at': message.created_at.isoformat(),
+                }
+                
+                # Add AI-specific data
+                if message.message_type == 'ai':
+                    message_data.update({
+                        'translated_prompt': message.translated_prompt,
+                        'image_url': message.generated_image_url,
+                        'ai_service': message.ai_service_used,
+                        'metadata': message.metadata,
+                    })
+                
+                messages.append(message_data)
+            
+            return JsonResponse({
+                'success': True,
+                'conversation': {
+                    'id': conversation.id,
+                    'title': conversation.title,
+                    'product_name': conversation.product.name if conversation.product else None,
+                    'created_at': conversation.created_at.isoformat(),
+                    'updated_at': conversation.updated_at.isoformat(),
+                },
+                'messages': messages
+            })
+            
+        except AIConversation.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'שיחה לא נמצאה'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'Method not allowed'})
+
 
 def remove_white_background(image):
     """Remove white and light gray background from image and make it transparent while preserving smooth edges"""
@@ -733,3 +800,11 @@ def remove_white_background(image):
     # Update image data
     image.putdata(new_data)
     return image
+
+def ai_conversation_demo(request):
+    """דף דמו לשיחות AI"""
+    # קרא את הקובץ HTML ישירות
+    file_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'ai_conversation_demo.html')
+    with open(file_path, 'r', encoding='utf-8') as f:
+        html_content = f.read()
+    return HttpResponse(html_content, content_type='text/html')

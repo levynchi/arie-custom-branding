@@ -6,6 +6,7 @@ let elementCounter = 0;
 let isDragging = false;
 let dragOffset = { x: 0, y: 0 };
 let selectedProduct = null;
+let currentConversationId = null; // מזהה השיחה הנוכחית
 
 // Product Selection
 function selectProduct(productElement) {
@@ -389,7 +390,8 @@ async function generateAIDesign() {
             body: JSON.stringify({
                 prompt: prompt,
                 product_id: selectedProduct.id,
-                product_name: document.querySelector('.product-option.selected .product-name').textContent
+                product_name: document.querySelector('.product-option.selected .product-name').textContent,
+                conversation_id: currentConversationId  // הוספת מזהה השיחה
             })
         });
         
@@ -397,6 +399,12 @@ async function generateAIDesign() {
         console.log('Response:', data);
         
         if (data.success) {
+            // עדכן את מזהה השיחה
+            if (data.conversation_id) {
+                currentConversationId = data.conversation_id;
+                console.log('Updated conversation ID:', currentConversationId);
+            }
+            
             // Add the generated image to the canvas
             const canvas = document.getElementById('designCanvas');
             const imageElement = document.createElement('div');

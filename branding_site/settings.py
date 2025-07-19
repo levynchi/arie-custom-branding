@@ -145,7 +145,10 @@ CRISPY_TEMPLATE_PACK = "bootstrap5"
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # OpenAI API settings
-# Freepik AI API Configuration (PRIMARY)
+# Replicate API Configuration (PRIMARY - Flux Pro 1.1)
+REPLICATE_API_KEY = os.getenv('REPLICATE_API_KEY', 'r8_IwUwxtUFeHvvPwygq9CNjAr5ptXCtbY3jMdpH')
+
+# Freepik AI API Configuration (FALLBACK)
 FREEPIK_API_KEY = os.getenv('FREEPIK_API_KEY', '')
 
 # Stability AI API Configuration (BACKUP)
