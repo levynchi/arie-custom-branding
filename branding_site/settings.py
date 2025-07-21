@@ -146,7 +146,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # OpenAI API settings
 # Replicate API Configuration (PRIMARY - Flux Pro 1.1)
-REPLICATE_API_KEY = os.getenv('REPLICATE_API_KEY', 'r8_IwUwxtUFeHvvPwygq9CNjAr5ptXCtbY3jMdpH')
+REPLICATE_API_KEY = os.getenv('REPLICATE_API_KEY', '')
 
 # Freepik AI API Configuration (FALLBACK)
 FREEPIK_API_KEY = os.getenv('FREEPIK_API_KEY', '')

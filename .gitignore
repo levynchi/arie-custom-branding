@@ -55,6 +55,10 @@ Thumbs.db
 # Media files (optional - remove if you want to include them)
 # media/
 
+# Large TIFF files (>100MB not allowed on GitHub)
+*_cmyk.tif
+*.tif
+
 # Static files (generated)
 /staticfiles/
 /static/
