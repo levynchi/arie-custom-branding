@@ -1,0 +1,945 @@
+{% extends 'main/base.html' %}
+{% load static %}
+
+{% block title %}עיצוב אישי - אריה קאסטום מיתוגים{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'main/css/custom_design.css' %}">
+<style>
+/* Modern Design Interface Styles */
+.design-interface {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.design-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+    height: 60px;
+}
+
+.design-content {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.design-sidebar {
+    width: 280px;
+    background: #fff;
+    border-right: 1px solid #e9ecef;
+    display: flex;
+    flex-direction: column;
+}
+
+.tool-tabs {
+    display: flex;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.tool-tab {
+    flex: 1;
+    padding: 12px 8px;
+    border: none;
+    background: transparent;
+    border-bottom: 3px solid transparent;
+    font-size: 11px;
+    transition: all 0.3s;
+    text-align: center;
+}
+
+.tool-tab.active {
+    background: #fff;
+    border-bottom-color: #007bff;
+    color: #007bff;
+}
+
+.tool-tab i {
+    display: block;
+    font-size: 16px;
+    margin-bottom: 4px;
+}
+
+.tool-panels {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.tool-panel {
+    display: none;
+    height: 100%;
+}
+
+.tool-panel.active {
+    display: block;
+}
+
+.panel-header {
+    padding: 15px;
+    border-bottom: 1px solid #e9ecef;
+    background: #f8f9fa;
+}
+
+.panel-content {
+    padding: 15px;
+}
+
+.design-canvas-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #f5f5f5;
+    position: relative;
+}
+
+.canvas-container {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    padding: 20px;
+    margin: 20px;
+}
+
+.design-canvas {
+    width: 400px;
+    height: 500px;
+    border: 2px dashed #ccc;
+    border-radius: 8px;
+    position: relative;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-color: #fff;
+}
+
+.canvas-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #999;
+    text-align: center;
+}
+
+.canvas-controls {
+    margin-top: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: center;
+}
+
+.design-properties {
+    width: 280px;
+    background: #fff;
+    border-left: 1px solid #e9ecef;
+    padding: 20px;
+}
+
+.properties-header {
+    border-bottom: 1px solid #e9ecef;
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+}
+
+.btn-xs {
+    padding: 2px 6px;
+    font-size: 10px;
+}
+
+.search-results {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.search-results .row {
+    margin: 0;
+}
+
+.shapes-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.shape-btn {
+    border: 1px solid #e9ecef;
+    background: #fff;
+    padding: 15px;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.3s;
+}
+
+.shape-btn:hover {
+    border-color: #007bff;
+    background: #f8f9fa;
+}
+
+.shape-btn i {
+    font-size: 20px;
+}
+
+.shape-btn span {
+    font-size: 12px;
+}
+
+.design-element {
+    position: absolute;
+    cursor: move;
+    user-select: none;
+    border: 2px dashed transparent;
+}
+
+.design-element:hover {
+    border-color: #007bff;
+}
+
+.design-element.selected {
+    border-color: #007bff !important;
+}
+
+.zoom-level {
+    font-size: 14px;
+    color: #666;
+    min-width: 50px;
+    text-align: center;
+}
+
+.print-dimensions {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    background: rgba(0,0,0,0.7);
+    color: white;
+    padding: 5px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Modern Design Interface -->
+<div class="design-interface" data-save-url="{% url 'main:save_design' %}">
+    <!-- Top Header -->
+    <div class="design-header">
+        <div class="header-left">
+            <h4 class="mb-0">
+                <i class="fas fa-palette me-2"></i>
+                עיצוב אישי
+            </h4>
+        </div>
+        <div class="header-center">
+            <!-- Product Selection -->
+            <div class="dropdown">
+                <button class="btn btn-outline-primary btn-sm dropdown-toggle" type="button" id="productDropdown" data-bs-toggle="dropdown">
+                    <i class="fas fa-box-open me-1"></i>
+                    <span id="selectedProductText">בחר מוצר...</span>
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="productDropdown">
+                    {% for product in products %}
+                    <li>
+                        <a class="dropdown-item product-dropdown-item{% if selected_product and selected_product.id == product.id %} active{% endif %}" 
+                           href="#" 
+                           data-product-id="{{ product.id }}" 
+                           data-product-name="{{ product.name }}"
+                           data-product-price="{{ product.price }}"
+                           data-product-image="{% if product.image %}{{ product.image.url }}{% endif %}"
+                           {% if product.can_print and product.max_print_width and product.max_print_height %}
+                           data-product-print-size="{{ product.max_print_width }}x{{ product.max_print_height }} ס\"מ"
+                           {% endif %}
+                           onclick="event.preventDefault(); selectProductFromDropdown(this, event);">
+                            <div class="d-flex align-items-center">
+                                {% if product.image %}
+                                    <img src="{{ product.image.url }}" alt="{{ product.name }}" 
+                                         style="width: 30px; height: 30px; object-fit: cover; border-radius: 4px; margin-left: 8px;">
+                                {% else %}
+                                    <i class="fas fa-tshirt me-2"></i>
+                                {% endif %}
+                                <div>
+                                    <div class="fw-bold">{{ product.name }}</div>
+                                    <small class="text-muted">₪{{ product.price }}</small>
+                                </div>
+                            </div>
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        <div class="header-right">
+            <button class="btn btn-outline-success btn-sm me-2" onclick="saveDesign()">
+                <i class="fas fa-save me-1"></i>שמור
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="design-content">
+        <!-- Left Sidebar - Tools -->
+        <div class="design-sidebar">
+            <!-- Tool Tabs -->
+            <div class="tool-tabs">
+                <button class="tool-tab active" data-tool="ai" onclick="switchTool(this)">
+                    <i class="fas fa-robot"></i>
+                    <span>AI עיצוב</span>
+                </button>
+                <button class="tool-tab" data-tool="images" onclick="switchTool(this)">
+                    <i class="fas fa-images"></i>
+                    <span>תמונות</span>
+                </button>
+                <button class="tool-tab" data-tool="text" onclick="switchTool(this)">
+                    <i class="fas fa-font"></i>
+                    <span>טקסט</span>
+                </button>
+                <button class="tool-tab" data-tool="shapes" onclick="switchTool(this)">
+                    <i class="fas fa-shapes"></i>
+                    <span>צורות</span>
+                </button>
+                <button class="tool-tab" data-tool="qr" onclick="switchTool(this)">
+                    <i class="fas fa-qrcode"></i>
+                    <span>QR Code</span>
+                </button>
+            </div>
+
+            <!-- Tool Panels -->
+            <div class="tool-panels">
+                <!-- AI Design Panel -->
+                <div class="tool-panel active" id="ai-panel">
+                    <div class="panel-header">
+                        <h6><i class="fas fa-robot me-2"></i>יצירת עיצוב AI</h6>
+                    </div>
+                    <div class="panel-content">
+                        <div class="mb-3">
+                            <label class="form-label">תיאור העיצוב</label>
+                            <textarea id="promptInput" class="form-control" rows="4" 
+                                      placeholder="תאר את העיצוב הרצוי..."></textarea>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">תמונת סטייל (אופציונלי)</label>
+                            <input type="file" class="form-control form-control-sm" id="styleImageInput" 
+                                   accept="image/*" onchange="handleStyleImageUpload(this)">
+                        </div>
+                        
+                        <button class="btn btn-primary w-100" onclick="generateAIDesign()" id="generateBtn">
+                            <i class="fas fa-magic me-1"></i>צור עיצוב
+                        </button>
+                        
+                        <div id="aiStatus" class="mt-2 text-center" style="display: none;">
+                            <div class="spinner-border spinner-border-sm me-2"></div>
+                            <span>יוצר עיצוב...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Images Panel -->
+                <div class="tool-panel" id="images-panel">
+                    <div class="panel-header">
+                        <h6><i class="fas fa-images me-2"></i>חיפוש תמונות</h6>
+                    </div>
+                    <div class="panel-content">
+                        <div class="mb-3">
+                            <input type="text" id="freepikSearchInput" class="form-control form-control-sm" 
+                                   placeholder="חפש תמונות..."
+                                   onkeypress="handleFreepikSearchKeypress(event)">
+                            <button class="btn btn-primary btn-sm w-100 mt-2" onclick="searchFreepikImages()" id="freepikSearchBtn">
+                                <i class="fas fa-search me-1"></i>חפש
+                            </button>
+                        </div>
+                        
+                        <!-- Search Filters -->
+                        <div class="mb-3">
+                            <div class="form-check form-check-sm">
+                                <input class="form-check-input" type="checkbox" id="transparentOnlyFilter" onchange="toggleTransparentFilter()">
+                                <label class="form-check-label small" for="transparentOnlyFilter">
+                                    רקע שקוף
+                                </label>
+                            </div>
+                            <div class="form-check form-check-sm">
+                                <input class="form-check-input" type="checkbox" id="vectorOnlyFilter" onchange="toggleVectorFilter()">
+                                <label class="form-check-label small" for="vectorOnlyFilter">
+                                    תמונות וקטור
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <!-- Quick Search Buttons -->
+                        <div class="mb-3">
+                            <div class="d-flex flex-wrap gap-1">
+                                <button type="button" class="btn btn-outline-primary btn-xs" onclick="quickSearch('logo transparent')">
+                                    לוגו
+                                </button>
+                                <button type="button" class="btn btn-outline-primary btn-xs" onclick="quickSearch('icon vector')">
+                                    איקון
+                                </button>
+                                <button type="button" class="btn btn-outline-primary btn-xs" onclick="quickSearch('animal cutout')">
+                                    חיות
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div id="freepikSearchStatus" class="text-center small" style="display: none;">
+                            <div class="spinner-border spinner-border-sm me-1"></div>
+                            <span>מחפש...</span>
+                        </div>
+                        
+                        <div id="imageSourceIndicator" class="text-center mb-2" style="display: none;">
+                            <small class="badge bg-info"></small>
+                        </div>
+                        
+                        <div id="freepikResults" class="search-results" style="display: none;">
+                            <!-- Results will be populated here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Text Panel -->
+                <div class="tool-panel" id="text-panel">
+                    <div class="panel-header">
+                        <h6><i class="fas fa-font me-2"></i>הוספת טקסט</h6>
+                    </div>
+                    <div class="panel-content">
+                        <div class="mb-3">
+                            <input type="text" id="textInput" class="form-control form-control-sm" 
+                                   placeholder="הקלד טקסט...">
+                            <button class="btn btn-primary btn-sm w-100 mt-2" onclick="addText()">
+                                <i class="fas fa-plus me-1"></i>הוסף טקסט
+                            </button>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label small">גופן</label>
+                            <select id="fontFamily" class="form-select form-select-sm">
+                                <option value="Arial">Arial</option>
+                                <option value="Heebo">Heebo</option>
+                                <option value="Assistant">Assistant</option>
+                                <option value="David">David</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label small">גודל</label>
+                            <input type="range" id="fontSize" class="form-range" min="10" max="100" value="24">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label small">צבע</label>
+                            <input type="color" id="textColor" class="form-control form-control-color" value="#000000">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Shapes Panel -->
+                <div class="tool-panel" id="shapes-panel">
+                    <div class="panel-header">
+                        <h6><i class="fas fa-shapes me-2"></i>צורות</h6>
+                    </div>
+                    <div class="panel-content">
+                        <div class="shapes-grid">
+                            <button class="shape-btn" onclick="addShape('rectangle')">
+                                <i class="fas fa-square"></i>
+                                <span>מלבן</span>
+                            </button>
+                            <button class="shape-btn" onclick="addShape('circle')">
+                                <i class="fas fa-circle"></i>
+                                <span>עיגול</span>
+                            </button>
+                            <button class="shape-btn" onclick="addShape('triangle')">
+                                <i class="fas fa-play"></i>
+                                <span>משולש</span>
+                            </button>
+                            <button class="shape-btn" onclick="addShape('star')">
+                                <i class="fas fa-star"></i>
+                                <span>כוכב</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- QR Code Panel -->
+                <div class="tool-panel" id="qr-panel">
+                    <div class="panel-header">
+                        <h6><i class="fas fa-qrcode me-2"></i>QR Code</h6>
+                    </div>
+                    <div class="panel-content">
+                        <div class="mb-3">
+                            <label class="form-label small">תוכן QR</label>
+                            <textarea id="qrText" class="form-control form-control-sm" rows="3" 
+                                      placeholder="הזן URL או טקסט..."></textarea>
+                        </div>
+                        <button class="btn btn-primary btn-sm w-100" onclick="generateQRCode()">
+                            <i class="fas fa-qrcode me-1"></i>צור QR Code
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Center Canvas Area -->
+        <div class="design-canvas-area">
+            <!-- No Product Warning -->
+            <div id="noProductMessage" class="alert alert-warning text-center" 
+                 style="display: {% if not selected_product %}block{% else %}none{% endif %};">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>יש לבחור מוצר תחילה</strong><br>
+                בחר מוצר מהרשימה כדי להתחיל לעצב
+            </div>
+
+            <!-- Canvas Container -->
+            <div class="canvas-container" {% if selected_product %}style="display: block;"{% else %}style="display: none;"{% endif %}>
+                <div id="designCanvas" class="design-canvas{% if selected_product %} with-product{% endif %}"
+                     {% if selected_product and selected_product.image %}
+                     style="background-image: url('{{ selected_product.image.url }}');"
+                     {% endif %}>
+                    
+                    <div id="placeholderText" class="canvas-placeholder" 
+                         {% if selected_product %}style="display: none;"{% endif %}>
+                        <i class="fas fa-mouse-pointer" style="font-size: 3rem; opacity: 0.3;"></i>
+                        <p>לחץ על הכלים משמאל להתחיל לעצב</p>
+                    </div>
+                    
+                    <!-- Print Dimensions Display -->
+                    <div id="printDimensions" class="print-dimensions" 
+                         {% if selected_product %}style="display: block;"{% else %}style="display: none;"{% endif %}>
+                        <small>
+                            <i class="fas fa-ruler me-1"></i>
+                            <span id="printDimensionsText">
+                                {% if selected_product %}{{ selected_product.max_print_width }}x{{ selected_product.max_print_height }} ס"מ{% endif %}
+                            </span>
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Canvas Controls -->
+            <div class="canvas-controls">
+                <button class="btn btn-outline-secondary btn-sm" onclick="zoomOut()">
+                    <i class="fas fa-minus"></i>
+                </button>
+                <span class="zoom-level">100%</span>
+                <button class="btn btn-outline-secondary btn-sm" onclick="zoomIn()">
+                    <i class="fas fa-plus"></i>
+                </button>
+                <button class="btn btn-outline-danger btn-sm ms-3" onclick="clearCanvas()">
+                    <i class="fas fa-trash"></i>נקה הכל
+                </button>
+            </div>
+        </div>
+
+        <!-- Right Properties Panel -->
+        <div class="design-properties">
+            <div class="properties-header">
+                <h6><i class="fas fa-cog me-2"></i>מאפיינים</h6>
+            </div>
+            <div class="properties-content">
+                <div id="elementProperties" style="display: none;">
+                    <!-- Element properties will be shown here -->
+                </div>
+                <div id="noSelection" class="text-center text-muted">
+                    <i class="fas fa-hand-pointer mb-2" style="font-size: 2rem; opacity: 0.3;"></i>
+                    <p class="small">בחר אלמנט לעריכת מאפיינים</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Save Modal -->
+<div class="modal fade" id="saveModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">שמירת עיצוב</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="designName" class="form-label">שם העיצוב</label>
+                    <input type="text" class="form-control" id="designName" placeholder="הכנס שם לעיצוב">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ביטול</button>
+                <button type="button" class="btn btn-primary" onclick="confirmSave()">שמור</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'main/js/custom_design.js' %}"></script>
+<script>
+// Initialize the new interface
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Modern design interface loaded');
+    initializeInterface();
+});
+
+// Tool switching functionality
+function switchTool(tab) {
+    // Remove active from all tabs and panels
+    document.querySelectorAll('.tool-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tool-panel').forEach(p => p.classList.remove('active'));
+    
+    // Add active to clicked tab and corresponding panel
+    tab.classList.add('active');
+    const toolType = tab.dataset.tool;
+    document.getElementById(toolType + '-panel').classList.add('active');
+}
+
+// Initialize interface
+function initializeInterface() {
+    // Set up canvas drag and drop
+    setupCanvasDragDrop();
+    
+    // Initialize tool panels
+    initializeToolPanels();
+}
+
+function setupCanvasDragDrop() {
+    const canvas = document.getElementById('designCanvas');
+    if (canvas) {
+        canvas.addEventListener('dragover', function(e) {
+            e.preventDefault();
+        });
+        
+        canvas.addEventListener('drop', function(e) {
+            e.preventDefault();
+            // Handle drop events
+        });
+    }
+}
+
+function initializeToolPanels() {
+    // Map old elements to new interface if they exist
+    const oldPrompt = document.getElementById('aiDesignPrompt');
+    const newPrompt = document.getElementById('promptInput');
+    if (oldPrompt && newPrompt && oldPrompt.value) {
+        newPrompt.value = oldPrompt.value;
+    }
+}
+
+// New functions for the modern interface
+function addText() {
+    const textInput = document.getElementById('textInput');
+    const fontFamily = document.getElementById('fontFamily');
+    const fontSize = document.getElementById('fontSize');
+    const textColor = document.getElementById('textColor');
+    
+    if (textInput.value.trim()) {
+        // Create text element with modern styling
+        createTextElement(textInput.value, {
+            fontFamily: fontFamily.value,
+            fontSize: fontSize.value + 'px',
+            color: textColor.value
+        });
+        textInput.value = '';
+    }
+}
+
+function addShape(shapeType) {
+    console.log('Adding shape:', shapeType);
+    if (!selectedProduct) {
+        showNoProductMessage();
+        return;
+    }
+    
+    const canvas = document.getElementById('designCanvas');
+    const shapeElement = document.createElement('div');
+    shapeElement.className = 'design-element shape-element';
+    
+    // Configure shape based on type
+    switch(shapeType) {
+        case 'rectangle':
+            shapeElement.style.width = '100px';
+            shapeElement.style.height = '60px';
+            shapeElement.style.backgroundColor = '#007bff';
+            break;
+        case 'circle':
+            shapeElement.style.width = '80px';
+            shapeElement.style.height = '80px';
+            shapeElement.style.backgroundColor = '#28a745';
+            shapeElement.style.borderRadius = '50%';
+            break;
+        case 'triangle':
+            shapeElement.style.width = '0';
+            shapeElement.style.height = '0';
+            shapeElement.style.borderLeft = '40px solid transparent';
+            shapeElement.style.borderRight = '40px solid transparent';
+            shapeElement.style.borderBottom = '70px solid #ffc107';
+            break;
+        case 'star':
+            shapeElement.innerHTML = '★';
+            shapeElement.style.fontSize = '60px';
+            shapeElement.style.color = '#dc3545';
+            shapeElement.style.width = 'auto';
+            shapeElement.style.height = 'auto';
+            break;
+    }
+    
+    shapeElement.style.position = 'absolute';
+    shapeElement.style.left = '50px';
+    shapeElement.style.top = '50px';
+    shapeElement.style.cursor = 'move';
+    
+    makeDraggable(shapeElement);
+    canvas.appendChild(shapeElement);
+    selectElement(shapeElement);
+}
+
+function generateQRCode() {
+    const qrText = document.getElementById('qrText');
+    if (qrText.value.trim()) {
+        console.log('Generating QR code for:', qrText.value);
+        // Implementation for QR code generation using a library like qrcode.js
+    }
+}
+
+function zoomIn() {
+    console.log('Zoom in');
+    const canvas = document.getElementById('designCanvas');
+    const currentScale = parseFloat(canvas.dataset.scale || '1');
+    const newScale = Math.min(currentScale * 1.2, 3);
+    canvas.style.transform = `scale(${newScale})`;
+    canvas.dataset.scale = newScale;
+    updateZoomDisplay(newScale);
+}
+
+function zoomOut() {
+    console.log('Zoom out');
+    const canvas = document.getElementById('designCanvas');
+    const currentScale = parseFloat(canvas.dataset.scale || '1');
+    const newScale = Math.max(currentScale / 1.2, 0.3);
+    canvas.style.transform = `scale(${newScale})`;
+    canvas.dataset.scale = newScale;
+    updateZoomDisplay(newScale);
+}
+
+function updateZoomDisplay(scale) {
+    const zoomLevel = document.querySelector('.zoom-level');
+    if (zoomLevel) {
+        zoomLevel.textContent = Math.round(scale * 100) + '%';
+    }
+}
+
+function clearCanvas() {
+    if (confirm('האם אתה בטוח שברצונך לנקות את כל העיצוב?')) {
+        const canvas = document.getElementById('designCanvas');
+        const elements = canvas.querySelectorAll('.design-element');
+        elements.forEach(el => el.remove());
+        
+        // Clear properties panel
+        const propertiesPanel = document.getElementById('elementProperties');
+        const noSelection = document.getElementById('noSelection');
+        if (propertiesPanel && noSelection) {
+            propertiesPanel.style.display = 'none';
+            noSelection.style.display = 'block';
+        }
+    }
+}
+
+function createTextElement(text, styles) {
+    if (!selectedProduct) {
+        showNoProductMessage();
+        return;
+    }
+    
+    const canvas = document.getElementById('designCanvas');
+    const textElement = document.createElement('div');
+    textElement.className = 'design-element text-element';
+    textElement.contentEditable = true;
+    textElement.textContent = text;
+    
+    // Apply styles
+    Object.assign(textElement.style, {
+        position: 'absolute',
+        left: '50px',
+        top: '50px',
+        fontFamily: styles.fontFamily,
+        fontSize: styles.fontSize,
+        color: styles.color,
+        cursor: 'move',
+        userSelect: 'none',
+        padding: '5px',
+        minWidth: '20px',
+        outline: 'none'
+    });
+    
+    // Make draggable
+    makeDraggable(textElement);
+    
+    canvas.appendChild(textElement);
+    selectElement(textElement);
+}
+
+function makeDraggable(element) {
+    let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+    
+    element.onmousedown = dragMouseDown;
+    
+    function dragMouseDown(e) {
+        e = e || window.event;
+        e.preventDefault();
+        pos3 = e.clientX;
+        pos4 = e.clientY;
+        document.onmouseup = closeDragElement;
+        document.onmousemove = elementDrag;
+        selectElement(element);
+    }
+    
+    function elementDrag(e) {
+        e = e || window.event;
+        e.preventDefault();
+        pos1 = pos3 - e.clientX;
+        pos2 = pos4 - e.clientY;
+        pos3 = e.clientX;
+        pos4 = e.clientY;
+        element.style.top = (element.offsetTop - pos2) + "px";
+        element.style.left = (element.offsetLeft - pos1) + "px";
+    }
+    
+    function closeDragElement() {
+        document.onmouseup = null;
+        document.onmousemove = null;
+    }
+}
+
+function selectElement(element) {
+    // Remove selection from other elements
+    document.querySelectorAll('.design-element').forEach(el => {
+        el.classList.remove('selected');
+    });
+    
+    // Select current element
+    element.classList.add('selected');
+    
+    // Show properties panel
+    showElementProperties(element);
+}
+
+function showElementProperties(element) {
+    const propertiesPanel = document.getElementById('elementProperties');
+    const noSelection = document.getElementById('noSelection');
+    
+    if (propertiesPanel && noSelection) {
+        noSelection.style.display = 'none';
+        propertiesPanel.style.display = 'block';
+        
+        // Generate properties UI based on element type
+        if (element.classList.contains('text-element')) {
+            propertiesPanel.innerHTML = `
+                <div class="mb-3">
+                    <label class="form-label small">טקסט</label>
+                    <input type="text" class="form-control form-control-sm" value="${element.textContent}" onchange="updateElementText(this.value)">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small">גודל גופן</label>
+                    <input type="range" class="form-range" min="10" max="100" value="${parseInt(element.style.fontSize)}" oninput="updateElementFontSize(this.value)">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small">צבע</label>
+                    <input type="color" class="form-control form-control-color" value="${rgbToHex(element.style.color)}" onchange="updateElementColor(this.value)">
+                </div>
+                <button class="btn btn-danger btn-sm w-100" onclick="deleteSelectedElement()">
+                    <i class="fas fa-trash me-1"></i>מחק אלמנט
+                </button>
+            `;
+        } else if (element.classList.contains('shape-element')) {
+            propertiesPanel.innerHTML = `
+                <div class="mb-3">
+                    <label class="form-label small">צבע</label>
+                    <input type="color" class="form-control form-control-color" value="${rgbToHex(element.style.backgroundColor)}" onchange="updateShapeColor(this.value)">
+                </div>
+                <button class="btn btn-danger btn-sm w-100" onclick="deleteSelectedElement()">
+                    <i class="fas fa-trash me-1"></i>מחק אלמנט
+                </button>
+            `;
+        }
+    }
+}
+
+function updateElementText(value) {
+    const selected = document.querySelector('.design-element.selected');
+    if (selected) {
+        selected.textContent = value;
+    }
+}
+
+function updateElementFontSize(value) {
+    const selected = document.querySelector('.design-element.selected');
+    if (selected) {
+        selected.style.fontSize = value + 'px';
+    }
+}
+
+function updateElementColor(value) {
+    const selected = document.querySelector('.design-element.selected');
+    if (selected) {
+        selected.style.color = value;
+    }
+}
+
+function updateShapeColor(value) {
+    const selected = document.querySelector('.design-element.selected');
+    if (selected) {
+        selected.style.backgroundColor = value;
+    }
+}
+
+function deleteSelectedElement() {
+    const selected = document.querySelector('.design-element.selected');
+    if (selected && confirm('האם למחוק את האלמנט?')) {
+        selected.remove();
+        
+        // Hide properties panel
+        const propertiesPanel = document.getElementById('elementProperties');
+        const noSelection = document.getElementById('noSelection');
+        if (propertiesPanel && noSelection) {
+            propertiesPanel.style.display = 'none';
+            noSelection.style.display = 'block';
+        }
+    }
+}
+
+function rgbToHex(rgb) {
+    if (!rgb || rgb.indexOf('rgb') === -1) return '#000000';
+    const rgbValues = rgb.match(/\d+/g);
+    if (!rgbValues) return '#000000';
+    return '#' + rgbValues.map(x => parseInt(x).toString(16).padStart(2, '0')).join('');
+}
+
+// Update generateAIDesign to use new prompt input
+function generateAIDesign() {
+    const promptInput = document.getElementById('promptInput');
+    if (promptInput && promptInput.value.trim()) {
+        // Use the existing generateAIDesign functionality but with new input
+        const oldPromptField = document.getElementById('aiDesignPrompt');
+        if (oldPromptField) {
+            oldPromptField.value = promptInput.value;
+        }
+        // Call the original function if it exists
+        if (window.originalGenerateAIDesign) {
+            window.originalGenerateAIDesign();
+        }
+    }
+}
+</script>
+{% endblock %}

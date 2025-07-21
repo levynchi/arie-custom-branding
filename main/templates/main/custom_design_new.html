@@ -1,0 +1,551 @@
+{% extends 'main/base.html' %}
+{% load static %}
+
+{% block title %}עיצוב אישי - אריה קאסטום מיתוגים{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'main/css/custom_design.css' %}">
+<style>
+/* New Layout Styles */
+.design-workspace {
+    display: flex;
+    height: calc(100vh - 200px);
+    gap: 20px;
+    padding: 20px;
+}
+
+.canvas-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.tool-options-bar {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.tool-options-content {
+    min-height: 60px;
+}
+
+.tool-options {
+    display: none;
+}
+
+.tool-options.active {
+    display: block;
+}
+
+.canvas-container {
+    flex: 1;
+    min-height: 400px;
+}
+
+.design-canvas {
+    width: 100%;
+    height: 100%;
+    background: #f8f9fa;
+    border: 2px dashed #dee2e6;
+    border-radius: 8px;
+    position: relative;
+    overflow: hidden;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+.design-canvas.with-product {
+    border: 2px solid #007bff;
+    background-color: #ffffff;
+}
+
+.canvas-placeholder {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    color: #6c757d;
+}
+
+.print-dimensions {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(255,255,255,0.9);
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+}
+
+.canvas-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    justify-content: center;
+}
+
+.tools-sidebar {
+    width: 250px;
+    background: #ffffff;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.tools-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.tool-button {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 15px;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: right;
+    color: #495057;
+    font-weight: 500;
+}
+
+.tool-button:hover {
+    background: #e9ecef;
+    border-color: #007bff;
+    transform: translateX(-5px);
+}
+
+.tool-button.active {
+    background: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+.tool-button.danger {
+    background: #dc3545;
+    color: white;
+    border-color: #dc3545;
+}
+
+.tool-button.danger:hover {
+    background: #c82333;
+    border-color: #c82333;
+}
+
+.tool-button i {
+    font-size: 1.2rem;
+    min-width: 20px;
+}
+
+.tools-divider {
+    height: 1px;
+    background: #dee2e6;
+    margin: 10px 0;
+}
+
+.search-results {
+    max-height: 200px;
+    overflow-y: auto;
+    margin-top: 15px;
+}
+
+#searchResultsArea {
+    margin-top: 15px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .design-workspace {
+        flex-direction: column;
+        height: auto;
+    }
+    
+    .tools-sidebar {
+        width: 100%;
+        order: -1;
+    }
+    
+    .tools-list {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+    
+    .tool-button {
+        flex: 1;
+        min-width: 120px;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Modern Design Interface -->
+<div class="design-interface" data-save-url="{% url 'main:save_design' %}">
+    <!-- Top Header -->
+    <div class="design-header">
+        <div class="header-left">
+            <h4 class="mb-0">
+                <i class="fas fa-palette me-2"></i>
+                עיצוב אישי
+            </h4>
+        </div>
+        <div class="header-center">
+            <!-- Product Selection -->
+            <div class="dropdown">
+                <button class="btn btn-outline-primary btn-sm dropdown-toggle" type="button" id="productDropdown" data-bs-toggle="dropdown">
+                    <i class="fas fa-box-open me-1"></i>
+                    <span id="selectedProductText">בחר מוצר...</span>
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="productDropdown">
+                    {% for product in products %}
+                    <li>
+                        <a class="dropdown-item product-dropdown-item{% if selected_product and selected_product.id == product.id %} active{% endif %}" 
+                           href="#" 
+                           data-product-id="{{ product.id }}" 
+                           data-product-name="{{ product.name }}"
+                           data-product-price="{{ product.price }}"
+                           data-product-image="{% if product.image %}{{ product.image.url }}{% endif %}"
+                           {% if product.can_print and product.max_print_width and product.max_print_height %}
+                           data-product-print-size="{{ product.max_print_width }}x{{ product.max_print_height }} ס\"מ"
+                           {% endif %}
+                           onclick="event.preventDefault(); selectProductFromDropdown(this, event);">
+                            <div class="d-flex align-items-center">
+                                {% if product.image %}
+                                    <img src="{{ product.image.url }}" alt="{{ product.name }}" 
+                                         style="width: 30px; height: 30px; object-fit: cover; border-radius: 4px; margin-left: 8px;">
+                                {% else %}
+                                    <i class="fas fa-tshirt me-2"></i>
+                                {% endif %}
+                                <div>
+                                    <div class="fw-bold">{{ product.name }}</div>
+                                    <small class="text-muted">₪{{ product.price }}</small>
+                                </div>
+                            </div>
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        <div class="header-right">
+            <button class="btn btn-outline-success btn-sm me-2" onclick="saveDesign()">
+                <i class="fas fa-save me-1"></i>שמור
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Workspace -->
+    <div class="design-workspace">
+        <!-- Left Side - Canvas Area -->
+        <div class="canvas-area">
+            <!-- Tool Options Bar (appears above canvas when tool is selected) -->
+            <div class="tool-options-bar" id="toolOptionsBar" style="display: none;">
+                <div class="tool-options-content">
+                    <!-- AI Options -->
+                    <div class="tool-options active" id="ai-options">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label small">תיאור העיצוב</label>
+                                <textarea id="promptInput" class="form-control form-control-sm" rows="2" 
+                                          placeholder="תאר את העיצוב הרצוי..."></textarea>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small">תמונת סטייל (אופציונלי)</label>
+                                <input type="file" class="form-control form-control-sm" id="styleImageInput" 
+                                       accept="image/*" onchange="handleStyleImageUpload(this)">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small">&nbsp;</label>
+                                <button class="btn btn-primary btn-sm w-100" onclick="generateAIDesign()" id="generateBtn">
+                                    <i class="fas fa-magic me-1"></i>צור
+                                </button>
+                            </div>
+                        </div>
+                        <div id="aiStatus" class="mt-2 text-center" style="display: none;">
+                            <div class="spinner-border spinner-border-sm me-2"></div>
+                            <span>יוצר עיצוב...</span>
+                        </div>
+                    </div>
+
+                    <!-- Images Options -->
+                    <div class="tool-options" id="images-options">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-4">
+                                <input type="text" id="freepikSearchInput" class="form-control form-control-sm" 
+                                       placeholder="חפש תמונות..."
+                                       onkeypress="handleFreepikSearchKeypress(event)">
+                            </div>
+                            <div class="col-md-2">
+                                <button class="btn btn-primary btn-sm w-100" onclick="searchFreepikImages()" id="freepikSearchBtn">
+                                    <i class="fas fa-search me-1"></i>חפש
+                                </button>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="transparentOnlyFilter" onchange="toggleTransparentFilter()">
+                                    <label class="form-check-label small" for="transparentOnlyFilter">רקע שקוף</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="vectorOnlyFilter" onchange="toggleVectorFilter()">
+                                    <label class="form-check-label small" for="vectorOnlyFilter">וקטור</label>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="btn-group btn-group-sm w-100">
+                                    <button type="button" class="btn btn-outline-secondary" onclick="quickSearch('logo transparent')">לוגו</button>
+                                    <button type="button" class="btn btn-outline-secondary" onclick="quickSearch('icon vector')">איקון</button>
+                                    <button type="button" class="btn btn-outline-secondary" onclick="quickSearch('animal cutout')">חיות</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Text Options -->
+                    <div class="tool-options" id="text-options">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-3">
+                                <input type="text" id="textInput" class="form-control form-control-sm" 
+                                       placeholder="הקלד טקסט...">
+                            </div>
+                            <div class="col-md-2">
+                                <select id="fontFamily" class="form-select form-select-sm">
+                                    <option value="Arial">Arial</option>
+                                    <option value="Heebo">Heebo</option>
+                                    <option value="Assistant">Assistant</option>
+                                    <option value="David">David</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <input type="range" id="fontSize" class="form-range" min="10" max="100" value="24">
+                                <small class="text-muted">גודל: <span id="fontSizeValue">24</span></small>
+                            </div>
+                            <div class="col-md-2">
+                                <input type="color" id="textColor" class="form-control form-control-color" value="#000000">
+                            </div>
+                            <div class="col-md-2">
+                                <button class="btn btn-primary btn-sm w-100" onclick="addText()">
+                                    <i class="fas fa-plus me-1"></i>הוסף
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Image Upload Options -->
+                    <div class="tool-options" id="upload-options">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-8">
+                                <input type="file" id="imageInput" accept="image/*" class="form-control form-control-sm" onchange="addImage(event)">
+                            </div>
+                            <div class="col-md-4">
+                                <button class="btn btn-success btn-sm w-100" onclick="document.getElementById('imageInput').click()">
+                                    <i class="fas fa-upload me-1"></i>בחר תמונה
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- No Product Warning -->
+            <div id="noProductMessage" class="alert alert-warning text-center" 
+                 style="display: {% if not selected_product %}block{% else %}none{% endif %};">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>יש לבחור מוצר תחילה</strong><br>
+                בחר מוצר מהרשימה כדי להתחיל לעצב
+            </div>
+
+            <!-- Canvas Container -->
+            <div class="canvas-container" {% if selected_product %}style="display: block;"{% else %}style="display: none;"{% endif %}>
+                <div id="designCanvas" class="design-canvas{% if selected_product %} with-product{% endif %}"
+                     {% if selected_product and selected_product.image %}
+                     style="background-image: url('{{ selected_product.image.url }}');"
+                     {% endif %}>
+                    
+                    <div id="placeholderText" class="canvas-placeholder" 
+                         {% if selected_product %}style="display: none;"{% endif %}>
+                        <i class="fas fa-mouse-pointer" style="font-size: 3rem; opacity: 0.3;"></i>
+                        <p>בחר כלי מהצד הימני להתחיל לעצב</p>
+                    </div>
+                    
+                    <!-- Print Dimensions Display -->
+                    <div id="printDimensions" class="print-dimensions" 
+                         {% if selected_product %}style="display: block;"{% else %}style="display: none;"{% endif %}>
+                        <small>
+                            <i class="fas fa-ruler me-1"></i>
+                            <span id="printDimensionsText">
+                                {% if selected_product %}{{ selected_product.max_print_width }}x{{ selected_product.max_print_height }} ס"מ{% endif %}
+                            </span>
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Canvas Controls -->
+            <div class="canvas-controls">
+                <button class="btn btn-outline-secondary btn-sm" onclick="zoomOut()">
+                    <i class="fas fa-minus"></i>
+                </button>
+                <span class="zoom-level">100%</span>
+                <button class="btn btn-outline-secondary btn-sm" onclick="zoomIn()">
+                    <i class="fas fa-plus"></i>
+                </button>
+                <button class="btn btn-outline-danger btn-sm ms-3" onclick="clearCanvas()">
+                    <i class="fas fa-trash"></i>נקה הכל
+                </button>
+            </div>
+
+            <!-- Search Results Area -->
+            <div id="searchResultsArea" style="display: none;">
+                <div id="freepikSearchStatus" class="text-center small" style="display: none;">
+                    <div class="spinner-border spinner-border-sm me-1"></div>
+                    <span>מחפש...</span>
+                </div>
+                
+                <div id="imageSourceIndicator" class="text-center mb-2" style="display: none;">
+                    <small class="badge bg-info"></small>
+                </div>
+                
+                <div id="freepikResults" class="search-results" style="display: none;">
+                    <!-- Results will be populated here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Side - Tool Buttons -->
+        <div class="tools-sidebar">
+            <div class="tools-list">
+                <button class="tool-button active" data-tool="ai" onclick="selectTool(this, 'ai')">
+                    <i class="fas fa-robot"></i>
+                    <span>יצירת עיצוב AI</span>
+                </button>
+                
+                <button class="tool-button" data-tool="images" onclick="selectTool(this, 'images')">
+                    <i class="fas fa-images"></i>
+                    <span>חיפוש תמונות מפרייפיק</span>
+                </button>
+                
+                <button class="tool-button" data-tool="text" onclick="selectTool(this, 'text')">
+                    <i class="fas fa-font"></i>
+                    <span>הוסף טקסט</span>
+                </button>
+                
+                <button class="tool-button" data-tool="upload" onclick="selectTool(this, 'upload')">
+                    <i class="fas fa-upload"></i>
+                    <span>הוספת תמונה</span>
+                </button>
+
+                <div class="tools-divider"></div>
+
+                <button class="tool-button" data-tool="shapes" onclick="selectTool(this, 'shapes')">
+                    <i class="fas fa-shapes"></i>
+                    <span>צורות</span>
+                </button>
+                
+                <button class="tool-button" data-tool="qr" onclick="selectTool(this, 'qr')">
+                    <i class="fas fa-qrcode"></i>
+                    <span>QR Code</span>
+                </button>
+
+                <div class="tools-divider"></div>
+
+                <button class="tool-button danger" onclick="clearCanvas()">
+                    <i class="fas fa-trash"></i>
+                    <span>נקה הכל</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Save Modal -->
+<div class="modal fade" id="saveModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">שמירת עיצוב</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="designName" class="form-label">שם העיצוב</label>
+                    <input type="text" class="form-control" id="designName" placeholder="הכנס שם לעיצוב">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ביטול</button>
+                <button type="button" class="btn btn-primary" onclick="confirmSave()">שמור</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'main/js/custom_design.js' %}?v=20250721110000"></script>
+<script>
+// New tool selection functionality
+function selectTool(button, toolType) {
+    // Remove active class from all tool buttons
+    document.querySelectorAll('.tool-button').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Add active class to clicked button
+    button.classList.add('active');
+    
+    // Hide all tool options
+    document.querySelectorAll('.tool-options').forEach(option => {
+        option.classList.remove('active');
+    });
+    
+    // Show the selected tool options
+    const selectedOptions = document.getElementById(toolType + '-options');
+    if (selectedOptions) {
+        selectedOptions.classList.add('active');
+        document.getElementById('toolOptionsBar').style.display = 'block';
+    } else {
+        document.getElementById('toolOptionsBar').style.display = 'none';
+    }
+    
+    // Show search results area for images tool
+    const searchResultsArea = document.getElementById('searchResultsArea');
+    if (toolType === 'images') {
+        searchResultsArea.style.display = 'block';
+    } else {
+        searchResultsArea.style.display = 'none';
+    }
+}
+
+// Update font size display
+document.getElementById('fontSize').addEventListener('input', function() {
+    document.getElementById('fontSizeValue').textContent = this.value;
+});
+
+// Initialize the AI tool as active on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const aiButton = document.querySelector('[data-tool="ai"]');
+    if (aiButton) {
+        selectTool(aiButton, 'ai');
+    }
+});
+</script>
+{% endblock %}

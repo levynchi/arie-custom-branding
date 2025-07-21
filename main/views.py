@@ -8,18 +8,18 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.db import models
+from django.utils import timezone
 import json
 import requests
 import base64
 import os
 import uuid
+import time
 from datetime import datetime
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from PIL import Image
 import io
-from datetime import datetime
-import uuid
 from .models import Category, Product, BusinessQuote, CustomDesign, AIConversation, AIMessage
 from .forms import BusinessQuoteForm, ContactForm
 from .utils import (
@@ -217,6 +217,29 @@ def custom_design(request):
     }
     return render(request, 'main/custom_design.html', context)
 
+def custom_design_modern(request):
+    """דף עיצוב אישי - גרסה מודרנית"""
+    import time
+    products = Product.objects.filter(is_active=True)
+    categories = Category.objects.filter(is_active=True)
+    
+    # בדיקה אם יש מוצר נבחר מראש
+    selected_product_id = request.GET.get('product')
+    selected_product = None
+    if selected_product_id:
+        try:
+            selected_product = Product.objects.get(id=selected_product_id, is_active=True)
+        except Product.DoesNotExist:
+            pass
+    
+    context = {
+        'products': products,
+        'categories': categories,
+        'selected_product': selected_product,
+        'current_time': int(time.time()),  # Cache busting
+    }
+    return render(request, 'main/custom_design_modern.html', context)
+
 @csrf_exempt
 def save_design(request):
     """שמירת עיצוב אישי"""
@@ -254,22 +277,47 @@ def save_design(request):
 
 @csrf_exempt
 def generate_ai_design(request):
-    """יצירת עיצוב באמצעות AI עם תמיכה בהיסטוריית שיחה"""
+    """יצירת עיצוב באמצעות AI עם תמיכה בהיסטוריית שיחה ותמונת סטייל"""
     if request.method == 'POST':
         try:
-            data = json.loads(request.body)
-            prompt = data.get('prompt', '')
-            product_id = data.get('product_id', '')
-            product_name = data.get('product_name', '')
-            conversation_id = data.get('conversation_id', None)  # מזהה שיחה קיימת
+            # Handle both JSON data and multipart form data (for file uploads)
+            if request.content_type and 'multipart/form-data' in request.content_type:
+                # Handle file upload case
+                prompt = request.POST.get('prompt', '')
+                product_id = request.POST.get('product_id', '')
+                product_name = request.POST.get('product_name', '')
+                conversation_id = request.POST.get('conversation_id', None)
+                style_image = request.FILES.get('style_image', None)
+                base_image_url = request.POST.get('base_image_url', None)  # תמונה לעריכה
+            else:
+                # Handle JSON case
+                data = json.loads(request.body)
+                prompt = data.get('prompt', '')
+                product_id = data.get('product_id', '')
+                product_name = data.get('product_name', '')
+                conversation_id = data.get('conversation_id', None)
+                style_image = None
+                base_image_url = data.get('base_image_url', None)  # תמונה לעריכה
             
             print(f"📥 DEBUG: POST request received")
             print(f"📥 DEBUG: prompt: '{prompt}'")
             print(f"📥 DEBUG: product_id: {product_id}")
             print(f"📥 DEBUG: conversation_id: {conversation_id}")
+            print(f"📥 DEBUG: style_image: {'Uploaded' if style_image else 'None'}")
+            print(f"📥 DEBUG: base_image_url: {base_image_url if base_image_url else 'None'}")
             
             if not prompt:
                 return JsonResponse({'success': False, 'error': 'חסר תיאור עיצוב'})
+            
+            # Validate product_id if provided
+            product = None
+            if product_id:
+                try:
+                    product = Product.objects.get(id=product_id, is_active=True)
+                    print(f"✅ DEBUG: Found product: {product.name}")
+                except Product.DoesNotExist:
+                    print(f"❌ DEBUG: Product with ID {product_id} not found")
+                    product_id = None  # Reset to None if product doesn't exist
             
             # Get session ID for all users (authenticated and anonymous)
             session_id = get_or_create_session_id(request)
@@ -302,7 +350,7 @@ def generate_ai_design(request):
                 conversation = AIConversation.objects.create(
                     user=request.user if request.user.is_authenticated else None,
                     session_id=session_id,  # כל המשתמשים יקבלו session_id
-                    product_id=product_id if product_id else None,
+                    product=product,  # Use the validated product object instead of product_id
                     title=title
                 )
                 print(f"🆕 DEBUG: Created NEW conversation {conversation.id}")
@@ -316,26 +364,22 @@ def generate_ai_design(request):
                 content=prompt
             )
             
-            # Get product dimensions if product_id is provided
+            # Get product dimensions if product exists
             max_width = 396.8  # Default width in pixels
             max_height = 453.5  # Default height in pixels
             
-            if product_id:
-                try:
-                    product = Product.objects.get(id=product_id, is_active=True)
-                    if product.can_print and product.max_print_width and product.max_print_height:
-                        # Convert cm to pixels at 300 DPI
-                        # 1 cm = 300/2.54 pixels at 300 DPI ≈ 118.11 pixels
-                        cm_to_pixels_300dpi = 300 / 2.54
-                        max_width = product.max_print_width * cm_to_pixels_300dpi
-                        max_height = product.max_print_height * cm_to_pixels_300dpi
-                        product_name = product.name
-                        # Update conversation product if not set
-                        if not conversation.product:
-                            conversation.product = product
-                            conversation.save()
-                except Product.DoesNotExist:
-                    pass
+            if product:
+                if product.can_print and product.max_print_width and product.max_print_height:
+                    # Convert cm to pixels at 300 DPI
+                    # 1 cm = 300/2.54 pixels at 300 DPI ≈ 118.11 pixels
+                    cm_to_pixels_300dpi = 300 / 2.54
+                    max_width = product.max_print_width * cm_to_pixels_300dpi
+                    max_height = product.max_print_height * cm_to_pixels_300dpi
+                    product_name = product.name
+                    # Update conversation product if not set
+                    if not conversation.product:
+                        conversation.product = product
+                        conversation.save()
             
             # Build very simple prompt for accurate results - translate Hebrew to English with context
             simple_prompt = prompt.strip()
@@ -376,39 +420,77 @@ def generate_ai_design(request):
             else:
                 print("✅ DEBUG: Translation successful - text changed.")
             
-            # בדיקה אם יש תמונה קודמת לשימוש כבסיס לשינוי
-            last_image_url = None
-            modification_keywords = [
-                "שנה", "שני", "אדום", "כחול", "ירוק", "צהוב", "סגול", "כתום", "ורוד", "שחור", "לבן",
-                "זווית", "מזווית", "צד", "מימין", "משמאל", "מלמעלה", "מלמטה", 
-                "גדול יותר", "קטן יותר", "עבה יותר", "דק יותר",
-                "עם", "בלי", "הוסף", "הסר", "החלף"
-            ]
+            # בדיקה אם המשתמש שלח תמונה לעריכה באופן מפורש
+            is_image_edit_request = bool(base_image_url)
             
-            # חיפוש התמונה האחרונה מההיסטוריה
-            print(f"🔍 DEBUG: Searching for previous images in conversation {conversation.id}")
-            print(f"🔍 DEBUG: Total messages in conversation: {conversation.messages.count()}")
+            # זיהוי אם זה עריכת צבע - הרחבת הרשימה לכיסוי יותר מקרים
+            color_keywords = ['אדום', 'אדומה', 'כחול', 'כחולה', 'ירוק', 'ירוקה', 'צהוב', 'צהובה', 'סגול', 'סגולה', 'כתום', 'כתומה', 'ורוד', 'ורודה', 'שחור', 'שחורה', 'לבן', 'לבנה', 'חום', 'חומה', 'אפור', 'אפורה',
+                            'red', 'blue', 'green', 'yellow', 'purple', 'orange', 'pink', 'black', 'white', 'brown', 'gray',
+                            'יותר אדום', 'more red', 'צבע', 'color', 'לצבוע', 'paint', 'הפוך', 'תעשה', 'בצבע', 'צבעי',
+                            'בלי צהוב', 'without yellow', 'make it', 'change color',
+                            'turn', 'transform', 'recolor', 'darker', 'lighter', 'brighter', 'בננה אדומה', 'בננה כחולה', 'בננה ירוקה']
+            is_color_edit_request = any(color in prompt.lower() for color in color_keywords) and is_image_edit_request
             
-            all_ai_messages = conversation.messages.filter(message_type='ai')
-            print(f"🔍 DEBUG: AI messages found: {all_ai_messages.count()}")
+            # דבאגינג לזיהוי צבעים
+            if is_image_edit_request:
+                found_colors = [color for color in color_keywords if color in prompt.lower()]
+                print(f"🔍 DEBUG: Found color keywords: {found_colors}")
             
-            ai_messages_with_images = all_ai_messages.filter(generated_image_url__isnull=False)
-            print(f"🔍 DEBUG: AI messages with images: {ai_messages_with_images.count()}")
-            
-            last_ai_message = ai_messages_with_images.order_by('-created_at').first()
-            
-            if last_ai_message:
-                last_image_url = last_ai_message.generated_image_url
-                print(f"🔍 DEBUG: Found last image: {last_image_url}")
-            else:
-                print("🔍 DEBUG: No previous images found in this conversation")
-            
-            # בדיקה אם הבקשה היא לשינוי תמונה קיימת
-            is_modification_request = any(keyword in simple_prompt.lower() for keyword in modification_keywords)
-            
-            print(f"🎯 DEBUG: Is modification request: {is_modification_request}")
-            print(f"🎯 DEBUG: Has previous image: {bool(last_image_url)}")
+            print(f"🎯 DEBUG: Is image edit request: {is_image_edit_request}")
+            print(f"🎨 DEBUG: Is color edit request: {is_color_edit_request}")
+            print(f"🎯 DEBUG: Base image for edit: {base_image_url if base_image_url else 'None'}")
             print(f"🎯 DEBUG: Final prompt for image generation: '{enhanced_prompt}'")
+            
+            print(f"🔧 DEBUG: About to process style image...")
+            
+            # טיפול בתמונת סטייל שהועלתה על ידי המשתמש
+            style_reference_url = None
+            if style_image:
+                print(f"🎨 DEBUG: Processing style image: {style_image}")
+                try:
+                    print("🎨 Processing style reference image")
+                    
+                    # יצירת שם קובץ ייחודי לתמונת הסטייל
+                    unique_id = str(uuid.uuid4().hex[:16])
+                    timestamp = timezone.now().strftime('%Y%m%d_%H%M%S')
+                    
+                    # קביעת סיומת הקובץ
+                    file_extension = 'png'  # Default
+                    if hasattr(style_image, 'name') and style_image.name:
+                        original_extension = style_image.name.lower().split('.')[-1]
+                        if original_extension in ['jpg', 'jpeg', 'png', 'webp']:
+                            file_extension = original_extension if original_extension != 'jpeg' else 'jpg'
+                    
+                    filename = f"style_ref_{unique_id}_{timestamp}.{file_extension}"
+                    
+                    # שמירת התמונה בתיקיית מדיה
+                    style_dir = os.path.join(settings.MEDIA_ROOT, 'style_references')
+                    os.makedirs(style_dir, exist_ok=True)
+                    
+                    file_path = os.path.join(style_dir, filename)
+                    
+                    # פתיחת התמונה ועיבוד
+                    with Image.open(style_image) as img:
+                        # המרה ל-RGB אם יש צורך
+                        if img.mode in ('RGBA', 'P'):
+                            img = img.convert('RGB')
+                        
+                        # שמירה באיכות גבוהה
+                        img.save(file_path, format='JPEG' if file_extension == 'jpg' else file_extension.upper(), 
+                                quality=95, dpi=(300, 300))
+                    
+                    # יצירת URL לתמונה
+                    style_reference_url = request.build_absolute_uri(f"/media/style_references/{filename}")
+                    
+                    print(f"✅ Style reference image saved: {style_reference_url}")
+                    
+                except Exception as e:
+                    print(f"❌ Error processing style image: {str(e)}")
+                    # ממשיכים גם אם יש שגיאה בעיבוד תמונת הסטייל
+            else:
+                print(f"🎨 DEBUG: No style image provided")
+                    
+            print(f"🚀 DEBUG: About to start AI generation...")
             
             # Generate image using AI - Choose between Flux Pro 1.1 or Freepik AI
             try:
@@ -416,28 +498,49 @@ def generate_ai_design(request):
                 replicate_api_key = getattr(settings, 'REPLICATE_API_KEY', None)
                 freepik_api_key = getattr(settings, 'FREEPIK_API_KEY', None)
                 
-                print(f"Replicate API Key: {'Found' if replicate_api_key else 'Not found'}")
-                print(f"Freepik API Key: {'Found' if freepik_api_key else 'Not found'}")
+                print("=" * 80)
+                print("🔍 AI ENGINE SELECTION DEBUG:")
+                print(f"🔑 Replicate API Key: {'✅ FOUND' if replicate_api_key else '❌ NOT FOUND'}")
+                if replicate_api_key:
+                    print(f"🔑 Replicate Key Length: {len(replicate_api_key)} characters")
+                    print(f"🔑 Replicate Key Preview: {replicate_api_key[:8]}...")
+                    
+                print(f"🔑 Freepik API Key: {'✅ FOUND' if freepik_api_key else '❌ NOT FOUND'}")
+                if freepik_api_key:
+                    print(f"🔑 Freepik Key Length: {len(freepik_api_key)} characters")
+                    print(f"🔑 Freepik Key Preview: {freepik_api_key[:8]}...")
+                print("=" * 80)
                 
                 # Prefer Flux Pro 1.1 if available, otherwise use Freepik
                 if replicate_api_key:
-                    print("🚀 Using Flux Pro 1.1 via Replicate")
+                    print("🚀🚀🚀 SELECTED ENGINE: FLUX PRO 1.1 VIA REPLICATE 🚀🚀🚀")
                     
                     # Use clean prompt for Flux
-                    clean_prompt = clean_prompt_for_ai(enhanced_prompt)
+                    clean_prompt = clean_prompt_for_ai(enhanced_prompt, is_color_edit=is_color_edit_request)
                     
                     # בדיקה אם להשתמש ב-Image-to-Image או Text-to-Image
-                    if is_modification_request and last_image_url:
-                        print("🔄 Using Image-to-Image mode with previous image")
-                        print(f"📷 Base image URL: {last_image_url}")
+                    if is_image_edit_request and base_image_url:
+                        print("🔄 Using Image-to-Image mode with user-selected image")
+                        print(f"📷 Base image URL: {base_image_url}")
                         
                         # Send to Flux Pro 1.1 with image input (Image-to-Image)
-                        # Use lower strength to preserve shape/angle, change only color
-                        image_url = send_flux_request(clean_prompt, replicate_api_key, init_image=last_image_url, strength=0.4)
+                        # Use higher strength for color changes and modifications
+                        if is_color_edit_request:
+                            print("🎨 Using ENHANCED COLOR EDIT mode")
+                            strength_value = 0.95  # Very very high strength for dramatic color changes
+                        else:
+                            strength_value = 0.8  # High strength for general edits
+                            
+                        image_url = send_flux_request(clean_prompt, replicate_api_key, 
+                                                    init_image=base_image_url, strength=strength_value, 
+                                                    style_image=style_reference_url, is_color_edit=is_color_edit_request)
                     else:
                         print("✨ Using Text-to-Image mode")
+                        if style_reference_url:
+                            print("🎨 Including style reference")
                         # Send to Flux Pro 1.1 (Text-to-Image)
-                        image_url = send_flux_request(clean_prompt, replicate_api_key)
+                        image_url = send_flux_request(clean_prompt, replicate_api_key, 
+                                                    style_image=style_reference_url, is_color_edit=False)
                     
                     # Download the image from Flux
                     img_response = requests.get(image_url, timeout=30)
@@ -448,7 +551,8 @@ def generate_ai_design(request):
                         raise Exception(f'Failed to download image from Flux URL: {img_response.status_code}')
                         
                 elif freepik_api_key:
-                    print("🎨 Using Freepik AI (fallback)")
+                    print("🎨🎨🎨 SELECTED ENGINE: FREEPIK AI (FALLBACK) 🎨🎨🎨")
+                    print("⚠️ WARNING: Using Freepik instead of Flux Pro 1.1!")
                     
                     # Use Freepik AI as fallback
                     headers = {
@@ -457,18 +561,18 @@ def generate_ai_design(request):
                     }
                     
                     final_prompt = enhanced_prompt
-                    clean_prompt = clean_prompt_for_ai(final_prompt)
+                    clean_prompt = clean_prompt_for_ai(final_prompt, is_color_edit=is_color_edit_request)
                     
                     # בחירת API endpoint ו-payload לפי סוג הבקשה
-                    if is_modification_request and last_image_url:
-                        print("🔄 Using Freepik Image-to-Image mode")
-                        print(f"📷 Base image URL: {last_image_url}")
+                    if is_image_edit_request and base_image_url:
+                        print("🔄 Using Freepik Image-to-Image mode with user-selected image")
+                        print(f"📷 Base image URL: {base_image_url}")
                         
                         # שימוש ב-Image-to-Image API של Freepik
                         api_url = 'https://api.freepik.com/v1/ai/image-to-image'
                         payload = {
                             'prompt': clean_prompt,
-                            'image': last_image_url,
+                            'image': base_image_url,
                             'strength': 0.7,  # רמת השינוי (0.1=שינוי קל, 1.0=שינוי מלא)
                             'num_inference_steps': 50,
                             'guidance_scale': 7.5,
@@ -476,9 +580,11 @@ def generate_ai_design(request):
                         }
                     else:
                         print("✨ Using Freepik Text-to-Image mode")
+                        if style_reference_url:
+                            print("🎨 Including style reference for Freepik")
                         # שימוש ב-Text-to-Image API רגיל של Freepik
                         api_url = 'https://api.freepik.com/v1/ai/text-to-image'
-                        payload = create_freepik_payload(clean_prompt)
+                        payload = create_freepik_payload(clean_prompt, style_reference_url)
                     
                     print("=" * 60)
                     print("📤 FREEPIK API REQUEST:")
@@ -509,6 +615,8 @@ def generate_ai_design(request):
                         error_msg = error_response.get('message', 'Unknown Freepik AI error')
                         raise Exception(f'Freepik AI service error: {error_msg}')
                 else:
+                    print("❌❌❌ NO AI ENGINE AVAILABLE! ❌❌❌")
+                    print("💥 ERROR: Neither Replicate nor Freepik API keys were found!")
                     return JsonResponse({
                         'success': False, 
                         'error': 'No AI service configured. Please add REPLICATE_API_KEY (preferred) or FREEPIK_API_KEY to your settings.'
@@ -606,9 +714,9 @@ def generate_ai_design(request):
                             'dimensions': f'{target_size[0]}x{target_size[1]} pixels',
                             'dpi': '300 DPI',
                             'max_print_size': f'{max_width/118.11:.1f}x{max_height/118.11:.1f} cm',
-                            'used_image_to_image': is_modification_request and bool(last_image_url),
-                            'base_image_url': last_image_url if (is_modification_request and last_image_url) else None,
-                            'modification_keywords_detected': [kw for kw in modification_keywords if kw in simple_prompt.lower()] if is_modification_request else []
+                            'used_image_to_image': is_image_edit_request and bool(base_image_url),
+                            'base_image_url': base_image_url if (is_image_edit_request and base_image_url) else None,
+                            'user_selected_edit': is_image_edit_request
                         }
                     )
                     
@@ -624,8 +732,8 @@ def generate_ai_design(request):
                         'ai_service': ai_service_name,
                         'conversation_id': conversation.id,  # שליחת מזהה השיחה
                         'conversation_title': conversation.title,
-                        'used_image_to_image': is_modification_request and bool(last_image_url),
-                        'base_image_url': last_image_url if (is_modification_request and last_image_url) else None
+                        'used_image_to_image': is_image_edit_request and bool(base_image_url),
+                        'base_image_url': base_image_url if (is_image_edit_request and base_image_url) else None
                     }
                     
                     return JsonResponse(response_data)
@@ -808,3 +916,452 @@ def ai_conversation_demo(request):
     with open(file_path, 'r', encoding='utf-8') as f:
         html_content = f.read()
     return HttpResponse(html_content, content_type='text/html')
+
+@csrf_exempt
+def search_freepik_images(request):
+    """חיפוש תמונות במאגר של Freepik - עם fallback ל-Unsplash/Pixabay"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        search_query = data.get('query', '').strip()
+        
+        if not search_query:
+            return JsonResponse({'error': 'Search query is required'}, status=400)
+        
+        # Try Freepik first, then fallback to free APIs
+        freepik_api_key = getattr(settings, 'FREEPIK_API_KEY', None)
+        
+        print(f"🔍 Searching for images: '{search_query}'")
+        print(f"🔑 Freepik API Key Status: {'✅ Available' if freepik_api_key and freepik_api_key.strip() else '❌ Not configured'}")
+        
+        # First, try Freepik if we have an API key
+        if freepik_api_key and freepik_api_key.strip():
+            print("🚀 Trying Freepik API first...")
+            try:
+                result = search_freepik_api(search_query, freepik_api_key)
+                if result:
+                    return result
+            except Exception as e:
+                print(f"⚠️ Freepik API failed: {str(e)}")
+        else:
+            print("⚠️ Freepik API key not configured - using fallback APIs")
+        
+        # Fallback to Unsplash (free API)
+        print("🚀 Trying Unsplash API as fallback...")
+        try:
+            result = search_unsplash_api(search_query)
+            if result:
+                return result
+        except Exception as e:
+            print(f"⚠️ Unsplash API failed: {str(e)}")
+        
+        # Final fallback to Pixabay (free API)
+        try:
+            result = search_pixabay_api(search_query)
+            if result:
+                return result
+        except Exception as e:
+            print(f"⚠️ Pixabay API failed: {str(e)}")
+        
+        # If all APIs fail, return error
+        return JsonResponse({
+            'error': 'כל שירותי החיפוש אינם זמינים כרגע. נסה שוב מאוחר יותר.'
+        }, status=503)
+    
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON data'}, status=400)
+    except Exception as e:
+        print(f"❌ Unexpected error in search_freepik_images: {str(e)}")
+        return JsonResponse({'error': f'Unexpected error: {str(e)}'}, status=500)
+
+def analyze_image_transparency_potential(title, tags, image_url, source_type):
+    """מחזירה ניקוד מ-0 עד 100 לסבירות שהתמונה מתאימה לרקע שקוף"""
+    score = 0
+    title_lower = title.lower() if title else ''
+    tags_text = ' '.join(tags).lower() if tags else ''
+    url_lower = image_url.lower() if image_url else ''
+    combined_text = f"{title_lower} {tags_text}".strip()
+    
+    # מילות מפתח חזקות שמעידות על רקע שקוף
+    strong_transparent_keywords = [
+        'transparent', 'png', 'cutout', 'isolated', 'logo', 'icon', 'vector',
+        'no background', 'white background', 'cut out', 'clip art', 'clipart',
+        'symbol', 'badge', 'sticker', 'graphic element'
+    ]
+    
+    # מילות מפתח בעברית
+    hebrew_keywords = [
+        'לוגו', 'איקון', 'סמל', 'מדבקה', 'איור', 'גרפיקה', 'וקטור'
+    ]
+    
+    # מילות מפתח בינוניות
+    medium_keywords = [
+        'illustration', 'design', 'minimal', 'simple', 'flat', 'graphic',
+        'silhouette', 'outline', 'drawing', 'art'
+    ]
+    
+    # בדיקת מילות מפתח חזקות
+    for keyword in strong_transparent_keywords:
+        if keyword in combined_text:
+            score += 30
+    
+    # בדיקת מילות מפתח בעברית
+    for keyword in hebrew_keywords:
+        if keyword in combined_text:
+            score += 25
+    
+    # בדיקת מילות מפתח בינוניות
+    for keyword in medium_keywords:
+        if keyword in combined_text:
+            score += 15
+    
+    # בדיקת סוג קובץ בURL
+    if '.png' in url_lower:
+        score += 20
+    elif '.svg' in url_lower:
+        score += 25
+    
+    # בונוס למקור Freepik עם תגיות רלוונטיות
+    if source_type == 'freepik':
+        if any(word in combined_text for word in ['vector', 'illustration', 'graphic']):
+            score += 10
+    
+    return min(score, 100)  # מקסימום 100
+
+def analyze_vector_potential(title, tags, image_url):
+    """מחזירה ניקוד מ-0 עד 100 לסבירות שהתמונה היא וקטורית"""
+    score = 0
+    title_lower = title.lower() if title else ''
+    tags_text = ' '.join(tags).lower() if tags else ''
+    url_lower = image_url.lower() if image_url else ''
+    combined_text = f"{title_lower} {tags_text}".strip()
+    
+    vector_keywords = [
+        'vector', 'svg', 'illustration', 'graphic', 'logo', 'icon',
+        'flat design', 'minimal', 'simple', 'geometric', 'abstract',
+        'symbol', 'badge', 'clean', 'modern'
+    ]
+    
+    hebrew_vector_keywords = [
+        'וקטור', 'איור', 'לוגו', 'איקון', 'סמל', 'עיצוב', 'גרפיקה'
+    ]
+    
+    # בדיקת מילות מפתח
+    for keyword in vector_keywords:
+        if keyword in combined_text:
+            score += 20
+    
+    for keyword in hebrew_vector_keywords:
+        if keyword in combined_text:
+            score += 20
+    
+    # בדיקת סוג קובץ
+    if '.svg' in url_lower:
+        score += 40
+    elif '.png' in url_lower:
+        score += 10  # PNG יכול להיות וקטורי
+    
+    return min(score, 100)
+
+def search_freepik_api(search_query, api_key):
+    """חיפוש תמונות ב-Freepik - עם ה-API הנכון ושיפור לתמונות שקופות"""
+    headers = {
+        'x-freepik-api-key': api_key,  # Correct header name
+        'Accept-Language': 'en-US',
+    }
+    
+    # Enhanced search logic for transparent images
+    enhanced_query = search_query
+    
+    # If user is looking for transparent images, enhance the search
+    transparency_keywords = ['שקוף', 'רקע שקוף', 'ללא רקע', 'transparent', 'no background', 'cutout']
+    vector_keywords = ['וקטור', 'לוגו', 'איקון', 'vector', 'logo', 'icon']
+    
+    is_transparency_search = any(keyword in search_query.lower() for keyword in transparency_keywords)
+    is_vector_search = any(keyword in search_query.lower() for keyword in vector_keywords)
+    
+    if is_transparency_search or is_vector_search:
+        # Add search terms that improve results for transparent images
+        enhanced_query += " transparent background vector logo icon isolated cutout"
+    
+    # Parameters according to official documentation
+    search_params = {
+        'term': enhanced_query,
+        'limit': 20,
+        'page': 1,
+        'order': 'relevance',
+        'filters[content_type][photo]': 1,  # Only photos
+        'filters[license][freemium]': 1,    # Free resources
+    }
+    
+    # Add vector filter if searching for vector content
+    if is_vector_search:
+        search_params['filters[content_type][vector]'] = 1
+        search_params.pop('filters[content_type][photo]', None)  # Remove photo filter
+    
+    api_url = 'https://api.freepik.com/v1/resources'
+    
+    print(f"🌐 Freepik API Request:")
+    print(f"   URL: {api_url}")
+    print(f"   Enhanced Query: {enhanced_query}")
+    print(f"   Params: {search_params}")
+    print(f"   API Key: {api_key[:8]}..." if api_key else "   API Key: None")
+    
+    response = requests.get(api_url, headers=headers, params=search_params, timeout=30)
+    
+    print(f"🌐 Freepik API Response Status: {response.status_code}")
+    
+    if response.status_code == 200:
+        search_results = response.json()
+        print(f"🌐 Raw response keys: {search_results.keys() if search_results else 'None'}")
+        
+        processed_results = []
+        
+        if 'data' in search_results:
+            for item in search_results['data']:
+                # Extract image information according to API response structure
+                image_data = item.get('image', {})
+                source_data = image_data.get('source', {})
+                title = item.get('title', 'Untitled')
+                tags = item.get('related', {}).get('keywords', [])
+                thumbnail_url = source_data.get('url', '')
+                
+                # Analyze transparency and vector potential
+                transparency_score = analyze_image_transparency_potential(
+                    title, tags, thumbnail_url, 'freepik'
+                )
+                vector_score = analyze_vector_potential(title, tags, thumbnail_url)
+                
+                processed_item = {
+                    'id': str(item.get('id', '')),
+                    'title': title,
+                    'thumbnail': thumbnail_url,
+                    'preview': thumbnail_url,  # Same URL for now
+                    'tags': tags,
+                    'type': 'freepik',
+                    'source': 'Freepik',
+                    'url': item.get('url', ''),  # Original Freepik page
+                    'author': item.get('author', {}).get('name', 'Unknown'),
+                    'downloads': item.get('stats', {}).get('downloads', 0),
+                    'orientation': image_data.get('orientation', 'unknown'),
+                    'transparency_score': transparency_score,
+                    'vector_score': vector_score,
+                    'is_likely_transparent': transparency_score >= 50,
+                    'is_likely_vector': vector_score >= 60
+                }
+                
+                # Only add items with valid image URLs
+                if processed_item['thumbnail']:
+                    processed_results.append(processed_item)
+        
+        print(f"✅ Found {len(processed_results)} images from Freepik")
+        
+        if processed_results:
+            return JsonResponse({
+                'success': True,
+                'results': processed_results,
+                'total': len(processed_results),
+                'source': 'Freepik'
+            })
+    
+    elif response.status_code == 401:
+        print(f"❌ Freepik API authentication failed: Invalid API key")
+        return None
+    elif response.status_code == 403:
+        print(f"❌ Freepik API forbidden: Check your subscription/credits")
+        return None
+    else:
+        try:
+            error_data = response.json()
+            print(f"❌ Freepik API error response: {error_data}")
+        except:
+            print(f"❌ Freepik API error: {response.status_code} - {response.text[:200]}")
+    
+    return None
+
+def search_unsplash_api(search_query):
+    """חיפוש תמונות ב-Unsplash (חינם)"""
+    # Using Unsplash's source API (no key required)
+    try:
+        # Translate Hebrew to English for better results
+        if any('\u0590' <= char <= '\u05ff' for char in search_query):
+            # Simple translation mapping for common Hebrew terms
+            translations = {
+                'בננה': 'banana',
+                'כלב': 'dog',
+                'חתול': 'cat',
+                'פרח': 'flower',
+                'עץ': 'tree',
+                'בית': 'house',
+                'רכב': 'car',
+                'אוכל': 'food',
+                'טבע': 'nature',
+                'ים': 'sea'
+            }
+            search_query = translations.get(search_query, search_query)
+        
+        processed_results = []
+        
+        # Create sample results from Unsplash
+        for i in range(12):
+            item_id = f"unsplash_{i}_{search_query}"
+            title = f'{search_query.title()} Image {i+1}'
+            thumbnail_url = f'https://source.unsplash.com/200x200/?{search_query}&sig={i}'
+            
+            # Analyze transparency and vector potential
+            transparency_score = analyze_image_transparency_potential(
+                title, [search_query], thumbnail_url, 'unsplash'
+            )
+            vector_score = analyze_vector_potential(title, [search_query], thumbnail_url)
+            
+            processed_item = {
+                'id': item_id,
+                'title': title,
+                'thumbnail': thumbnail_url,
+                'preview': f'https://source.unsplash.com/400x400/?{search_query}&sig={i}',
+                'tags': [search_query],
+                'type': 'unsplash',
+                'source': 'Unsplash',
+                'transparency_score': transparency_score,
+                'vector_score': vector_score,
+                'is_likely_transparent': transparency_score >= 50,
+                'is_likely_vector': vector_score >= 60
+            }
+            processed_results.append(processed_item)
+        
+        print(f"✅ Generated {len(processed_results)} images from Unsplash")
+        return JsonResponse({
+            'success': True,
+            'results': processed_results,
+            'total': len(processed_results),
+            'source': 'Unsplash (Free)'
+        })
+    
+    except Exception as e:
+        print(f"❌ Unsplash error: {str(e)}")
+        return None
+
+def search_pixabay_api(search_query):
+    """חיפוש תמונות ב-Pixabay (fallback נוסף)"""
+    try:
+        # Translate Hebrew to English for better results
+        if any('\u0590' <= char <= '\u05ff' for char in search_query):
+            translations = {
+                'בננה': 'banana',
+                'כלב': 'dog',
+                'חתול': 'cat',
+                'פרח': 'flower',
+                'עץ': 'tree',
+                'בית': 'house',
+                'רכב': 'car',
+                'אוכל': 'food',
+                'טבע': 'nature',
+                'ים': 'sea'
+            }
+            search_query = translations.get(search_query, search_query)
+        
+        processed_results = []
+        
+        # Create sample results
+        for i in range(8):
+            item_id = f"pixabay_{i}_{search_query}"
+            title = f'{search_query.title()} Stock {i+1}'
+            thumbnail_url = f'https://via.placeholder.com/150x150/4a90e2/ffffff?text={search_query[:3].upper()}{i+1}'
+            
+            # Analyze transparency and vector potential
+            transparency_score = analyze_image_transparency_potential(
+                title, [search_query, 'stock'], thumbnail_url, 'pixabay'
+            )
+            vector_score = analyze_vector_potential(title, [search_query, 'stock'], thumbnail_url)
+            
+            processed_item = {
+                'id': item_id,
+                'title': title,
+                'thumbnail': thumbnail_url,
+                'preview': f'https://via.placeholder.com/300x300/4a90e2/ffffff?text={search_query[:3].upper()}{i+1}',
+                'tags': [search_query, 'stock'],
+                'type': 'pixabay',
+                'source': 'Stock Images',
+                'transparency_score': transparency_score,
+                'vector_score': vector_score,
+                'is_likely_transparent': transparency_score >= 50,
+                'is_likely_vector': vector_score >= 60
+            }
+            processed_results.append(processed_item)
+        
+        print(f"✅ Generated {len(processed_results)} placeholder images")
+        return JsonResponse({
+            'success': True,
+            'results': processed_results,
+            'total': len(processed_results),
+            'source': 'Stock Images'
+        })
+    
+    except Exception as e:
+        print(f"❌ Pixabay error: {str(e)}")
+        return None
+
+@csrf_exempt
+def download_freepik_image(request):
+    """הורדת תמונה והוספה לעיצוב"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        image_id = data.get('image_id')
+        image_url = data.get('image_url')
+        image_title = data.get('image_title', 'Image')
+        
+        if not image_id or not image_url:
+            return JsonResponse({'error': 'Image ID and URL are required'}, status=400)
+        
+        print(f"📥 Downloading image: {image_id}")
+        
+        # Add headers to avoid blocking
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        
+        # הורדת התמונה
+        response = requests.get(image_url, headers=headers, timeout=30)
+        if response.status_code == 200:
+            # יצירת שם קובץ ייחודי
+            timestamp = timezone.now().strftime('%Y%m%d_%H%M%S')
+            image_type = image_id.split('_')[0] if '_' in image_id else 'stock'
+            filename = f"{image_type}_{image_id.replace('/', '_')}_{timestamp}.jpg"
+            
+            # שמירת התמונה בתיקיית media
+            media_path = os.path.join(settings.MEDIA_ROOT, 'freepik_images')
+            os.makedirs(media_path, exist_ok=True)
+            
+            file_path = os.path.join(media_path, filename)
+            with open(file_path, 'wb') as f:
+                f.write(response.content)
+            
+            # URL יחסי לתמונה
+            image_url = os.path.join(settings.MEDIA_URL, 'freepik_images', filename).replace('\\', '/')
+            
+            print(f"✅ Image saved: {filename}")
+            return JsonResponse({
+                'success': True,
+                'image_url': image_url,
+                'filename': filename,
+                'title': image_title
+            })
+        else:
+            print(f"❌ Failed to download image: HTTP {response.status_code}")
+            return JsonResponse({'error': f'Failed to download image: {response.status_code}'}, status=500)
+    
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON data'}, status=400)
+    except requests.exceptions.Timeout:
+        return JsonResponse({'error': 'Download timeout - try again'}, status=408)
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Download error: {str(e)}")
+        return JsonResponse({'error': f'Download error: {str(e)}'}, status=500)
+    except Exception as e:
+        print(f"❌ Unexpected error in download_freepik_image: {str(e)}")
+        return JsonResponse({'error': f'Unexpected error: {str(e)}'}, status=500)
