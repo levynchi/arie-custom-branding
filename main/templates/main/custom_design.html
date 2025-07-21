@@ -340,6 +340,22 @@
                                 </div>
                             </div>
                         </div>
+                        
+                        <!-- Search Results Area - moved here from outside -->
+                        <div id="searchResultsArea" style="display: none; margin-top: 15px;">
+                            <div id="freepikSearchStatus" class="text-center small" style="display: none;">
+                                <div class="spinner-border spinner-border-sm me-1"></div>
+                                <span>מחפש...</span>
+                            </div>
+                            
+                            <div id="imageSourceIndicator" class="text-center mb-2" style="display: none;">
+                                <small class="badge bg-info"></small>
+                            </div>
+                            
+                            <div id="freepikResults" class="search-results" style="display: none;">
+                                <!-- Results will be populated here -->
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Text Options -->
@@ -434,22 +450,6 @@
                 <button class="btn btn-outline-danger btn-sm ms-3" onclick="clearCanvas()">
                     <i class="fas fa-trash"></i>נקה הכל
                 </button>
-            </div>
-
-            <!-- Search Results Area -->
-            <div id="searchResultsArea" style="display: none;">
-                <div id="freepikSearchStatus" class="text-center small" style="display: none;">
-                    <div class="spinner-border spinner-border-sm me-1"></div>
-                    <span>מחפש...</span>
-                </div>
-                
-                <div id="imageSourceIndicator" class="text-center mb-2" style="display: none;">
-                    <small class="badge bg-info"></small>
-                </div>
-                
-                <div id="freepikResults" class="search-results" style="display: none;">
-                    <!-- Results will be populated here -->
-                </div>
             </div>
         </div>
 

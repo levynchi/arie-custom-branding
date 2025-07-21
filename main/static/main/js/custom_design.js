@@ -1183,6 +1183,15 @@ function searchFreepikImages() {
     const searchBtn = document.getElementById('freepikSearchBtn');
     const searchStatus = document.getElementById('freepikSearchStatus');
     const resultsContainer = document.getElementById('freepikResults');
+    const searchResultsArea = document.getElementById('searchResultsArea');
+    
+    // Make sure search results area is visible
+    if (searchResultsArea) {
+        searchResultsArea.style.display = 'block';
+        console.log('searchResultsArea made visible before search');
+    } else {
+        console.log('searchResultsArea not found!');
+    }
     
     searchBtn.disabled = true;
     searchStatus.style.display = 'block';
@@ -1270,6 +1279,7 @@ function searchFreepikImages() {
  */
 function displayFreepikResults(results) {
     const resultsContainer = document.getElementById('freepikResults');
+    const searchResultsArea = document.getElementById('searchResultsArea');
     
     let html = '';
     results.forEach(image => {
@@ -1312,6 +1322,14 @@ function displayFreepikResults(results) {
     
     resultsContainer.innerHTML = html;
     resultsContainer.style.display = 'block';
+    
+    // Make sure the search results area is visible
+    if (searchResultsArea) {
+        searchResultsArea.style.display = 'block';
+        console.log('searchResultsArea made visible after displaying results');
+    } else {
+        console.log('searchResultsArea not found in displayFreepikResults!');
+    }
 }
 
 /**
@@ -1474,10 +1492,18 @@ function selectTool(button, toolType) {
     
     // Show search results area for images tool
     const searchResultsArea = document.getElementById('searchResultsArea');
+    console.log('selectTool called for:', toolType, 'searchResultsArea found:', !!searchResultsArea);
+    
     if (toolType === 'images') {
-        searchResultsArea.style.display = 'block';
+        if (searchResultsArea) {
+            searchResultsArea.style.display = 'block';
+            console.log('searchResultsArea displayed for images tool');
+        }
     } else {
-        searchResultsArea.style.display = 'none';
+        if (searchResultsArea) {
+            searchResultsArea.style.display = 'none';
+            console.log('searchResultsArea hidden for non-images tool');
+        }
     }
 }
 
