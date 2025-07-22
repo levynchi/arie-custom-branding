@@ -149,23 +149,36 @@
                     <!-- Text Options -->
                     <div class="tool-options" id="text-options">
                         <div class="row g-3 align-items-end">
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <input type="text" id="textInput" class="form-control form-control-sm" 
                                        placeholder="הקלד טקסט...">
                             </div>
                             <div class="col-md-2">
-                                <select id="fontFamily" class="form-select form-select-sm">
-                                    <option value="Arial">Arial</option>
-                                    <option value="Heebo">Heebo</option>
-                                    <option value="Assistant">Assistant</option>
-                                    <option value="David">David</option>
+                                <select id="fontFamily" class="form-select form-select-sm font-preview-select">
+                                    <option value="Arial" style="font-family: Arial;">Arial</option>
+                                    <option value="Inter" style="font-family: Inter;">Inter - אינטר</option>
+                                    <option value="Poppins" style="font-family: Poppins;">Poppins - פופינס</option>
+                                    <option value="Heebo" style="font-family: Heebo;">Heebo - הבו</option>
+                                    <option value="Rubik" style="font-family: Rubik;">Rubik - רוביק</option>
+                                    <option value="Noto Sans Hebrew" style="font-family: 'Noto Sans Hebrew';">Noto Sans Hebrew - נוטו</option>
+                                    <option value="Frank Ruhl Libre" style="font-family: 'Frank Ruhl Libre';">Frank Ruhl Libre - פרנק</option>
+                                    <option value="Assistant" style="font-family: Assistant;">Assistant - אסיסטנט</option>
+                                    <option value="Open Sans" style="font-family: 'Open Sans';">Open Sans - אופן</option>
+                                    <option value="Varela Round" style="font-family: 'Varela Round';">Varela Round - ורלה</option>
+                                    <option value="Alef" style="font-family: Alef;">Alef - אל״ף</option>
+                                    <option value="Secular One" style="font-family: 'Secular One';">Secular One - חילוני</option>
+                                    <option value="Suez One" style="font-family: 'Suez One';">Suez One - סואץ</option>
+                                    <option value="Amatic SC" style="font-family: 'Amatic SC';">Amatic SC - אמטיק</option>
+                                    <option value="Miriam Libre" style="font-family: 'Miriam Libre';">Miriam Libre - מרים</option>
+                                    <option value="Tinos" style="font-family: Tinos;">Tinos - טינוס</option>
+                                    <option value="David CLM" style="font-family: 'David CLM';">David CLM - דוד</option>
                                 </select>
                             </div>
-                            <div class="col-md-2">
+                            <div class="col-md-1">
                                 <input type="range" id="fontSize" class="form-range" min="10" max="100" value="24">
                                 <small class="text-muted">גודל: <span id="fontSizeValue">24</span></small>
                             </div>
-                            <div class="col-md-2">
+                            <div class="col-md-1">
                                 <div class="current-color-indicator">
                                     <div id="currentColorSwatch" class="current-color-swatch"></div>
                                     <span id="currentColorText">שחור</span>
@@ -173,6 +186,21 @@
                                 <input type="color" id="textColor" class="form-control form-control-color" value="#000000">
                             </div>
                             <div class="col-md-2">
+                                <div class="btn-group btn-group-sm w-100">
+                                    <button type="button" class="btn btn-outline-secondary" id="boldBtn" onclick="toggleBold()" title="הדגשה מהירה">
+                                        <i class="fas fa-bold"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary" id="archBtn" onclick="toggleArch()" title="קשת">
+                                        <i class="fas fa-rainbow"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="col-md-1">
+                                <input type="range" id="archCurve" class="form-range" min="-50" max="50" value="0" style="display: none;" oninput="updateArchCurve(this.value)">
+                                <small class="text-muted arch-controls" style="display: none;">קשת: <span id="archCurveValue">0</span></small>
+                            </div>
+                            <div class="col-md-1">
                                 <button class="btn btn-primary btn-sm w-100" onclick="addText()">
                                     <i class="fas fa-plus me-1"></i>הוסף
                                 </button>
@@ -370,5 +398,180 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'main/js/custom_design.js' %}?v=20250722081200"></script>
+<!-- Professional Arc Text Implementation Based on Real-World Solution -->
+<script>
+// Professional Arc Text Controller (like the Angular directive)
+class ArcTextController {
+    constructor() {
+        this.arc = 0;
+        this.isActive = false;
+        this.timeout = null;
+        this.element = null;
+        this.originalText = '';
+    }
+
+    // Initialize arc text on element (like Angular's launch function)
+    launch(element, options = {}) {
+        this.element = element;
+        this.originalText = element.textContent;
+        this.arc = parseInt(options.arc || 0);
+        this.isActive = true;
+        
+        console.log(`[ArcText] Launching with arc: ${this.arc}, text: "${this.originalText}"`);
+        this.updateArc();
+    }
+
+    // Update arc value (like the Angular directive's updateArc)
+    updateArc() {
+        if (!this.isActive || !this.element) return;
+        
+        // Clear previous timeout
+        if (this.timeout) {
+            clearTimeout(this.timeout);
+        }
+        
+        // Debounce updates (like Angular's 250ms timeout)
+        this.timeout = setTimeout(() => {
+            this.generateSVGText();
+        }, 100);
+    }
+
+    // Generate SVG text with arc (like the API call in Angular)
+    generateSVGText() {
+        const fontSize = window.getComputedStyle(this.element).fontSize || '24px';
+        const fontFamily = window.getComputedStyle(this.element).fontFamily || 'Arial';
+        const color = window.getComputedStyle(this.element).color || '#000000';
+        
+        console.log(`[ArcText] Generating SVG: arc=${this.arc}`);
+        
+        if (this.arc === 0) {
+            // No arc - return to normal text
+            this.element.innerHTML = this.originalText;
+            this.element.style.width = 'auto';
+            this.element.style.height = 'auto';
+            this.element.style.overflow = 'visible';
+            this.element.style.position = 'relative';
+            this.element.style.display = 'inline-block';
+            return;
+        }
+        
+        // Fixed container dimensions - NEVER CHANGE
+        const containerWidth = 300;
+        const containerHeight = 100;
+        
+        // Calculate text dimensions for proper centering
+        const textLength = this.originalText.length;
+        const estimatedTextWidth = textLength * parseInt(fontSize) * 0.6;
+        
+        // Create arc path with FIXED center point
+        const centerX = containerWidth / 2;
+        const centerY = containerHeight / 2;
+        
+        // Arc calculation - only the curve changes, not position
+        const arcIntensity = Math.abs(this.arc) * 0.5; // Reduced intensity
+        const pathWidth = Math.min(estimatedTextWidth, containerWidth - 20);
+        
+        const startX = centerX - pathWidth / 2;
+        const endX = centerX + pathWidth / 2;
+        
+        let pathD;
+        if (this.arc > 0) {
+            // Positive arc (down)
+            const curveY = centerY + arcIntensity;
+            pathD = `M ${startX} ${centerY} Q ${centerX} ${curveY} ${endX} ${centerY}`;
+        } else {
+            // Negative arc (up)
+            const curveY = centerY - arcIntensity;
+            pathD = `M ${startX} ${centerY} Q ${centerX} ${curveY} ${endX} ${centerY}`;
+        }
+        
+        const pathId = `arcPath_${Date.now()}`;
+        
+        // Generate SVG with ABSOLUTE positioning
+        const svg = `
+            <svg width="${containerWidth}" height="${containerHeight}" 
+                 viewBox="0 0 ${containerWidth} ${containerHeight}" 
+                 style="position: absolute; top: 0; left: 0; overflow: visible;">
+                <defs>
+                    <path id="${pathId}" d="${pathD}" />
+                </defs>
+                <text font-family="${fontFamily}" font-size="${fontSize}" fill="${color}" 
+                      text-anchor="middle" dominant-baseline="central">
+                    <textPath href="#${pathId}" startOffset="50%">
+                        ${this.originalText}
+                    </textPath>
+                </text>
+            </svg>
+        `;
+        
+        // Apply with FIXED container styling
+        this.element.innerHTML = svg;
+        this.element.style.width = `${containerWidth}px`;
+        this.element.style.height = `${containerHeight}px`;
+        this.element.style.position = 'relative';
+        this.element.style.display = 'inline-block';
+        this.element.style.overflow = 'visible';
+        this.element.style.verticalAlign = 'top'; // Prevent baseline jumping
+    }
+
+    // Set arc value (like their mouseDownArc and mouseMoveArc)
+    setArc(value) {
+        // Clamp between -360 and 360 (like their validation)
+        this.arc = Math.max(-360, Math.min(360, parseInt(value)));
+        this.updateArc();
+        return this.arc;
+    }
+
+    // Reset arc (like their clickNoArc)
+    resetArc() {
+        return this.setArc(0);
+    }
+
+    // Destroy (cleanup)
+    destroy() {
+        if (this.timeout) {
+            clearTimeout(this.timeout);
+        }
+        if (this.element) {
+            this.element.innerHTML = this.originalText;
+            this.element.style.width = 'auto';
+            this.element.style.height = 'auto';
+            this.element.style.overflow = 'visible';
+        }
+        this.isActive = false;
+    }
+}
+
+// Global arc text controller instance
+window.arcTextController = new ArcTextController();
+
+// Updated Hebrew arch text function using the professional approach
+function createHebrewArchText(element, radius, direction) {
+    const text = element.textContent;
+    
+    console.log(`[createHebrewArchText] Called with radius: ${radius}, direction: ${direction}, text: "${text}"`);
+    
+    if (radius === 0) {
+        window.arcTextController.destroy();
+        return;
+    }
+    
+    // Convert radius to arc value (like their conversion system)
+    const arcValue = radius * direction; // Positive for down, negative for up
+    
+    // Launch the arc text controller
+    window.arcTextController.launch(element, {
+        arc: arcValue,
+        text: text
+    });
+    
+    console.log(`✅ Professional arc text created with arc: ${arcValue}`);
+}
+
+// Make it globally available
+window.createCurvedText = createHebrewArchText;
+
+console.log('✅ Professional Arc Text System loaded successfully');
+</script>
+<script src="{% static 'main/js/custom_design.js' %}?v=20250722170000"></script>
 {% endblock %}

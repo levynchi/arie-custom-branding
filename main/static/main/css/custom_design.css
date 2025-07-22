@@ -1,5 +1,115 @@
 /* Custom Design Page Styles */
 
+/* Import Hebrew Google Fonts with basic weights only (400, 700) - ONLY for text elements */
+@import url('https://fonts.googleapis.com/css2?family=Heebo:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Assistant:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Rubik:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Varela+Round:wght@400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Alef:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Secular+One:wght@400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Suez+One:wght@400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Amatic+SC:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Miriam+Libre:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Tinos:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Hebrew:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap');
+
+/* IMPORTANT: Reset body and interface fonts to prevent interference - ONLY for custom design page */
+body.custom-design-page {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+}
+
+.design-interface *:not(.fas):not(.far):not(.fab):not(.fal):not([class*="fa-"]) {
+    font-family: inherit !important;
+}
+
+/* Preserve Font Awesome icons */
+.fas, .far, .fab, .fal, [class*="fa-"] {
+    font-family: "Font Awesome 6 Free", "Font Awesome 6 Brands", "Font Awesome 6 Pro" !important;
+}
+
+/* Only design elements should use custom fonts */
+.design-element, .design-element *:not(.fas):not(.far):not(.fab):not(.fal):not([class*="fa-"]) {
+    font-family: inherit; /* Will inherit from the specific font applied via JavaScript */
+}
+
+/* Font Preview in Select Dropdown */
+.font-preview-select option {
+    font-size: 16px !important;
+    padding: 8px 12px !important;
+    line-height: 1.4 !important;
+}
+
+/* Ensure fonts load properly in select options */
+select.font-preview-select {
+    font-size: 14px;
+}
+
+/* Update select font based on selection */
+select.font-preview-select[data-current-font="Inter"] { font-family: Inter; }
+select.font-preview-select[data-current-font="Poppins"] { font-family: Poppins; }
+select.font-preview-select[data-current-font="Heebo"] { font-family: Heebo; }
+select.font-preview-select[data-current-font="Assistant"] { font-family: Assistant; }
+select.font-preview-select[data-current-font="Rubik"] { font-family: Rubik; }
+select.font-preview-select[data-current-font="Varela Round"] { font-family: 'Varela Round'; }
+select.font-preview-select[data-current-font="Open Sans"] { font-family: 'Open Sans'; }
+select.font-preview-select[data-current-font="Alef"] { font-family: Alef; }
+select.font-preview-select[data-current-font="Frank Ruhl Libre"] { font-family: 'Frank Ruhl Libre'; }
+select.font-preview-select[data-current-font="Secular One"] { font-family: 'Secular One'; }
+select.font-preview-select[data-current-font="Suez One"] { font-family: 'Suez One'; }
+select.font-preview-select[data-current-font="Amatic SC"] { font-family: 'Amatic SC'; }
+select.font-preview-select[data-current-font="Miriam Libre"] { font-family: 'Miriam Libre'; }
+select.font-preview-select[data-current-font="Tinos"] { font-family: Tinos; }
+select.font-preview-select[data-current-font="David CLM"] { font-family: 'David CLM'; }
+select.font-preview-select[data-current-font="Noto Sans Hebrew"] { font-family: 'Noto Sans Hebrew'; }
+
+/* Text Effects - CircleType.js Support */
+.text-arch {
+    display: inline-block;
+    position: relative;
+    line-height: 1;
+    transition: all 0.3s ease;
+}
+
+/* CircleType.js creates individual spans for each character */
+.text-arch > span {
+    transition: transform 0.3s ease;
+}
+
+/* Ensure arch text doesn't break layout */
+.text-element .text-arch {
+    white-space: nowrap;
+    transform-origin: center center;
+}
+
+.text-arch svg textPath {
+    font-size: inherit;
+    font-family: inherit;
+    font-weight: inherit;
+    fill: currentColor;
+}
+
+/* Active style buttons */
+.btn-outline-secondary.active {
+    background-color: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+/* Arch controls visibility */
+.arch-controls {
+    font-size: 0.75rem;
+}
+
+/* Font weight text styling */
+#fontWeightValue {
+    font-size: 0.7rem;
+    white-space: nowrap;
+}
+
 /* New Layout Styles */
 .design-interface {
     min-height: 100vh;

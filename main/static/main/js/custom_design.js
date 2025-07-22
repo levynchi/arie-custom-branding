@@ -231,21 +231,69 @@ function addText() {
         return;
     }
     
+    // Get text from input field
+    const textInput = document.getElementById('textInput');
+    let textContent = 'טקסט חדש'; // default text
+    if (textInput && textInput.value.trim()) {
+        textContent = textInput.value.trim();
+        textInput.value = ''; // Clear input after use
+    }
+    
+    // Get current font size from slider
+    const fontSizeSlider = document.getElementById('fontSize');
+    const fontSize = fontSizeSlider ? fontSizeSlider.value + 'px' : '24px';
+    
     const canvas = document.getElementById('designCanvas');
     const textElement = document.createElement('div');
     textElement.className = 'design-element text-element';
     textElement.id = 'element_' + (++elementCounter);
     textElement.innerHTML = `
-        <span contenteditable="true" class="js-text-editable">טקסט חדש</span>
+        <span contenteditable="true" class="js-text-editable">${textContent}</span>
         <button class="delete-btn" onclick="deleteElement('${textElement.id}')">&times;</button>
     `;
     textElement.style.left = '50px';
     textElement.style.top = '50px';
-    textElement.style.fontSize = '24px';
-    textElement.style.color = '#000000';
+    textElement.style.fontSize = fontSize;
+    
+    // Get current color from color picker and apply to the span
+    const colorPicker = document.getElementById('textColor');
+    const currentColor = colorPicker ? colorPicker.value : '#000000';
+    
+    // Get current font family from selector
+    const fontFamilySelector = document.getElementById('fontFamily');
+    const currentFontFamily = fontFamilySelector ? fontFamilySelector.value : 'Arial';
+    
+    // Check if bold is active
+    const boldBtn = document.getElementById('boldBtn');
+    const isBold = boldBtn && boldBtn.classList.contains('active');
+    const fontWeight = isBold ? '700' : '400';
+    
+    // Check if arch is active
+    const archBtn = document.getElementById('archBtn');
+    const isArched = archBtn && archBtn.classList.contains('active');
+    const archValue = isArched ? document.getElementById('archCurve').value : 0;
     
     canvas.appendChild(textElement);
+    
+    // Apply color, font, and effects to the span element (not the container)
+    const textSpan = textElement.querySelector('span[contenteditable]');
+    if (textSpan) {
+        textSpan.style.color = currentColor;
+        textSpan.style.fontSize = fontSize;
+        textSpan.style.fontFamily = currentFontFamily;
+        textSpan.style.fontWeight = fontWeight;
+        
+        if (isArched) {
+            textSpan.classList.add('text-arch');
+            const curvature = parseFloat(archValue) || 0;
+            createSimpleArchEffect(textSpan, curvature);
+        }
+    }
+    
     makeElementInteractive(textElement);
+    
+    // Select the new element to make it active
+    selectElement(textElement);
 }
 
 function addImage(event) {
@@ -311,19 +359,49 @@ function toggleEmojiPicker() {
 // Element Interaction
 function makeElementInteractive(element) {
     element.addEventListener('mousedown', startDrag);
-    element.addEventListener('click', selectElement);
+    element.addEventListener('click', function(e) {
+        console.log('Element clicked, calling selectElement');
+        selectElement(e);
+        // If it's a text element, also update UI controls
+        if (element.classList.contains('text-element')) {
+            updateUIControlsFromElement(element);
+        }
+    });
     
     // Special handling for text elements
     if (element.classList.contains('text-element')) {
         const textSpan = element.querySelector('span[contenteditable]');
         if (textSpan) {
+            // Handle clicks on the text span itself
             textSpan.addEventListener('click', function(e) {
                 e.stopPropagation();
-                this.focus();
+                console.log('Text span clicked');
+                selectElement(element); // Select parent element
+                this.focus(); // Focus on text for editing
+                updateUIControlsFromElement(element); // Update controls immediately
             });
             
             textSpan.addEventListener('mousedown', function(e) {
                 e.stopPropagation();
+            });
+            
+            // Handle when text gets focus (for editing)
+            textSpan.addEventListener('focus', function(e) {
+                console.log('Text focused for editing');
+                selectElement(element); // Make sure parent is selected
+                updateUIControlsFromElement(element); // Update color picker and font size
+            });
+            
+            // Handle text selection within the span
+            textSpan.addEventListener('mouseup', function(e) {
+                setTimeout(() => {
+                    const selection = window.getSelection();
+                    if (selection.toString().length > 0) {
+                        console.log('Text selected:', selection.toString());
+                        selectElement(element);
+                        updateUIControlsFromElement(element);
+                    }
+                }, 10);
             });
             
             textSpan.addEventListener('keydown', function(e) {
@@ -411,6 +489,9 @@ function selectElement(elementOrEvent) {
     // Add selection to current element
     element.classList.add('selected');
     selectedElement = element;
+    
+    // Update UI controls if it's a text element
+    updateUIControlsFromElement(element);
 }
 
 function deleteElement(elementId) {
@@ -422,6 +503,119 @@ function deleteElement(elementId) {
 }
 
 // UI Controls
+
+// Function to update UI controls based on selected element
+function updateUIControlsFromElement(element) {
+    if (!element || !element.classList.contains('text-element')) {
+        return;
+    }
+    
+    const textSpan = element.querySelector('span[contenteditable]');
+    if (!textSpan) {
+        return;
+    }
+    
+    console.log('Updating UI controls from element');
+    
+    // Update color picker to match selected text color
+    const currentColor = window.getComputedStyle(textSpan).color;
+    const colorPicker = document.getElementById('textColor');
+    if (colorPicker && currentColor) {
+        // Convert RGB to hex if needed
+        const hexColor = rgbToHex(currentColor);
+        if (hexColor) {
+            console.log('Setting color picker to:', hexColor);
+            colorPicker.value = hexColor;
+            updateColorIndicator(hexColor);
+        }
+    }
+    
+    // Update font size slider to match selected text size
+    const currentFontSize = window.getComputedStyle(textSpan).fontSize;
+    const fontSizeSlider = document.getElementById('fontSize');
+    const fontSizeValue = document.getElementById('fontSizeValue');
+    if (fontSizeSlider && fontSizeValue && currentFontSize) {
+        const fontSize = parseInt(currentFontSize);
+        console.log('Setting font size to:', fontSize);
+        fontSizeSlider.value = fontSize;
+        fontSizeValue.textContent = fontSize + 'px';
+    }
+    
+    // Update font family selector to match selected text font
+    const currentFontFamily = window.getComputedStyle(textSpan).fontFamily;
+    const fontFamilySelector = document.getElementById('fontFamily');
+    if (fontFamilySelector && currentFontFamily) {
+        console.log('Current font family:', currentFontFamily);
+        // Remove quotes and normalize font family name
+        const normalizedFontFamily = currentFontFamily.replace(/['"]/g, '').split(',')[0].trim();
+        console.log('Normalized font family:', normalizedFontFamily);
+        
+        // Try to match with available options
+        const options = fontFamilySelector.querySelectorAll('option');
+        for (let option of options) {
+            if (option.value === normalizedFontFamily || option.value.includes(normalizedFontFamily)) {
+                console.log('Setting font family selector to:', option.value);
+                fontFamilySelector.value = option.value;
+                // Update font preview
+                fontFamilySelector.setAttribute('data-current-font', option.value);
+                fontFamilySelector.style.fontFamily = option.value;
+                break;
+            }
+        }
+    }
+    
+    // Update bold button state
+    const boldBtn = document.getElementById('boldBtn');
+    if (boldBtn) {
+        const currentWeight = window.getComputedStyle(textSpan).fontWeight;
+        const isBold = currentWeight === 'bold' || currentWeight === '700' || parseInt(currentWeight) >= 700;
+        if (isBold) {
+            boldBtn.classList.add('active');
+        } else {
+            boldBtn.classList.remove('active');
+        }
+    }
+    
+    // Update arch button and controls state
+    const archBtn = document.getElementById('archBtn');
+    const archSlider = document.getElementById('archCurve');
+    const archControls = document.querySelector('.arch-controls');
+    if (archBtn && textSpan.classList.contains('text-arch')) {
+        archBtn.classList.add('active');
+        archSlider.style.display = 'block';
+        archControls.style.display = 'block';
+        
+        // Get current arch angle
+        const currentTransform = textSpan.style.getPropertyValue('--arch-angle');
+        if (currentTransform) {
+            const angle = parseFloat(currentTransform);
+            archSlider.value = angle || 0;
+            document.getElementById('archCurveValue').textContent = angle || '0';
+        }
+    } else if (archBtn) {
+        archBtn.classList.remove('active');
+        archSlider.style.display = 'none';
+        archControls.style.display = 'none';
+    }
+}
+
+// Helper function to convert RGB to HEX
+function rgbToHex(rgb) {
+    if (!rgb || rgb === 'transparent') return null;
+    
+    // Handle hex colors that are already in hex format
+    if (rgb.startsWith('#')) return rgb;
+    
+    // Handle rgb() format
+    const match = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+    if (!match) return null;
+    
+    const r = parseInt(match[1]);
+    const g = parseInt(match[2]);  
+    const b = parseInt(match[3]);
+    
+    return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+}
 function toggleEmojiPicker() {
     const picker = document.getElementById('emojiPicker');
     picker.style.display = picker.style.display === 'none' ? 'block' : 'none';
@@ -457,22 +651,339 @@ function updateColorIndicator(color) {
 }
 
 function changeColor(color) {
+    console.log('changeColor called with:', color);
     updateColorIndicator(color);
     
-    if (selectedElement) {
-        const textSpan = selectedElement.querySelector('span');
+    // Apply color to currently selected element if it exists
+    if (selectedElement && selectedElement.classList.contains('text-element')) {
+        console.log('Applying color to selected element:', selectedElement);
+        const textSpan = selectedElement.querySelector('span[contenteditable]');
         if (textSpan) {
+            console.log('Found text span, applying color:', color);
             textSpan.style.color = color;
+        } else {
+            console.log('No text span found in selected element');
+        }
+    } else {
+        console.log('No selected text element found');
+    }
+    
+    // Also update any focused contenteditable element (blue border state)
+    const focusedElement = document.activeElement;
+    if (focusedElement && focusedElement.hasAttribute('contenteditable')) {
+        console.log('Applying color to focused element:', focusedElement);
+        focusedElement.style.color = color;
+        
+        // Also select the parent element to make sure it's in the selected state
+        const parentElement = focusedElement.closest('.design-element');
+        if (parentElement && !parentElement.classList.contains('selected')) {
+            console.log('Auto-selecting parent element');
+            selectElement(parentElement);
         }
     }
 }
 
 function changeFontSize(size) {
-    document.getElementById('fontSizeValue').textContent = size + 'px';
-    if (selectedElement) {
-        const textSpan = selectedElement.querySelector('span');
+    const fontSizeValue = document.getElementById('fontSizeValue');
+    if (fontSizeValue) {
+        fontSizeValue.textContent = size + 'px';
+    }
+    
+    // Apply to currently selected element if it exists
+    if (selectedElement && selectedElement.classList.contains('text-element')) {
+        const textSpan = selectedElement.querySelector('span[contenteditable]');
         if (textSpan) {
             textSpan.style.fontSize = size + 'px';
+        }
+    }
+    
+    // Also update any focused contenteditable element (blue border state)
+    const focusedElement = document.activeElement;
+    if (focusedElement && focusedElement.hasAttribute('contenteditable')) {
+        focusedElement.style.fontSize = size + 'px';
+        
+        // Also select the parent element to make sure it's in the selected state
+        const parentElement = focusedElement.closest('.design-element');
+        if (parentElement && !parentElement.classList.contains('selected')) {
+            selectElement(parentElement);
+        }
+    }
+}
+
+function changeFontFamily(fontFamily) {
+    console.log('changeFontFamily called with font:', fontFamily);
+    
+    // Update the select element font preview
+    const fontFamilySelector = document.getElementById('fontFamily');
+    if (fontFamilySelector) {
+        fontFamilySelector.setAttribute('data-current-font', fontFamily);
+        fontFamilySelector.style.fontFamily = fontFamily;
+    }
+    
+    // Apply to currently selected element if it exists
+    if (selectedElement && selectedElement.classList.contains('text-element')) {
+        console.log('Applying font family to selected element:', selectedElement);
+        const textSpan = selectedElement.querySelector('span[contenteditable]');
+        if (textSpan) {
+            console.log('Found text span, applying font family:', fontFamily);
+            textSpan.style.fontFamily = fontFamily;
+        } else {
+            console.log('No text span found in selected element');
+        }
+    } else {
+        console.log('No selected text element found');
+    }
+    
+    // Also update any focused contenteditable element (blue border state)
+    const focusedElement = document.activeElement;
+    if (focusedElement && focusedElement.hasAttribute('contenteditable')) {
+        console.log('Applying font family to focused element:', focusedElement);
+        focusedElement.style.fontFamily = fontFamily;
+        
+        // Also select the parent element to make sure it's in the selected state
+        const parentElement = focusedElement.closest('.design-element');
+        if (parentElement && !parentElement.classList.contains('selected')) {
+            console.log('Auto-selecting parent element');
+            selectElement(parentElement);
+        }
+    }
+}
+
+function toggleBold() {
+    console.log('toggleBold called');
+    const boldBtn = document.getElementById('boldBtn');
+    
+    let isBold = false;
+    
+    // Apply to currently selected element if it exists
+    if (selectedElement && selectedElement.classList.contains('text-element')) {
+        const textSpan = selectedElement.querySelector('span[contenteditable]');
+        if (textSpan) {
+            const currentWeight = window.getComputedStyle(textSpan).fontWeight;
+            isBold = currentWeight === 'bold' || currentWeight === '700' || parseInt(currentWeight) >= 700;
+            
+            if (isBold) {
+                textSpan.style.fontWeight = '400';
+                boldBtn.classList.remove('active');
+            } else {
+                textSpan.style.fontWeight = '700';
+                boldBtn.classList.add('active');
+            }
+        }
+    }
+    
+    // Also update any focused contenteditable element (blue border state)
+    const focusedElement = document.activeElement;
+    if (focusedElement && focusedElement.hasAttribute('contenteditable')) {
+        const currentWeight = window.getComputedStyle(focusedElement).fontWeight;
+        isBold = currentWeight === 'bold' || currentWeight === '700' || parseInt(currentWeight) >= 700;
+        
+        if (isBold) {
+            focusedElement.style.fontWeight = '400';
+            boldBtn.classList.remove('active');
+        } else {
+            focusedElement.style.fontWeight = '700';
+            boldBtn.classList.add('active');
+        }
+        
+        // Also select the parent element
+        const parentElement = focusedElement.closest('.design-element');
+        if (parentElement && !parentElement.classList.contains('selected')) {
+            selectElement(parentElement);
+        }
+    }
+}
+
+// Font weight function removed - using simple bold toggle only
+
+// Helper function to create simple arch effect using custom curved text
+function createSimpleArchEffect(textSpan, curvature) {
+    console.log('Creating arch effect with custom curved text, curvature:', curvature);
+    
+    // Remove any existing arch effect
+    if (textSpan.originalText) {
+        // Restore original text
+        textSpan.innerHTML = textSpan.originalText;
+        textSpan.style.position = '';
+        textSpan.style.display = '';
+        textSpan.style.height = '';
+        textSpan.style.width = '';
+    }
+    
+    if (curvature === 0) {
+        // No arch effect, keep text normal
+        console.log('Curvature is 0, removing arch effect');
+        return;
+    }
+    
+    try {
+        // Store original text
+        if (!textSpan.originalText) {
+            textSpan.originalText = textSpan.textContent;
+        }
+        
+        // Calculate radius with better progression that works from 0 to 50+
+        const absCurvature = Math.abs(curvature);
+        let radius;
+        
+        if (absCurvature === 0) {
+            // Perfect 0 - no arch
+            console.log('Zero curvature - no arch effect');
+            return;
+        } else if (absCurvature <= 1) {
+            // Ultra-smooth start for 0.1 to 1
+            radius = 300 - (absCurvature * 50); // 300 to 250
+        } else if (absCurvature <= 5) {
+            // Smooth for 1 to 5
+            radius = 250 - ((absCurvature - 1) * 30); // 250 to 130
+        } else if (absCurvature <= 15) {
+            // Medium for 5 to 15  
+            radius = 130 - ((absCurvature - 5) * 6); // 130 to 70
+        } else if (absCurvature <= 30) {
+            // Strong curve for 15 to 30
+            radius = 70 - ((absCurvature - 15) * 2); // 70 to 40
+        } else if (absCurvature <= 50) {
+            // Very strong for 30 to 50
+            radius = 40 - ((absCurvature - 30) * 1); // 40 to 20
+        } else {
+            // Maximum curve for 50+
+            radius = 20;
+        }
+        
+        // Minimum radius
+        radius = Math.max(radius, 15);
+        
+        console.log(`Custom curved text radius: ${radius} for curvature: ${curvature}`);
+        
+        // Direction: positive = arch up, negative = arch down
+        const direction = curvature > 0 ? -1 : 1;
+        
+        // Create curved text - this preserves Hebrew text direction
+        if (typeof createCurvedText === 'function') {
+            createCurvedText(textSpan, radius, direction);
+            console.log('✅ Custom curved text effect created successfully for Hebrew');
+        } else {
+            console.error('createCurvedText function not available');
+        }
+        
+    } catch (error) {
+        console.error('❌ Error creating curved text effect:', error);
+        // Fallback to simple CSS transform
+        const angle = curvature * 1.5;
+        textSpan.style.transform = `rotate(${angle}deg)`;
+        textSpan.style.transformOrigin = 'center center';
+    }
+}
+
+// Remove arch effect with custom cleanup
+function removeSimpleArchEffect(textSpan) {
+    console.log('Removing arch effect with custom cleanup');
+    
+    // Restore original text if it exists
+    if (textSpan.originalText) {
+        try {
+            textSpan.innerHTML = textSpan.originalText;
+            // Reset container styles to original
+            textSpan.style.position = '';
+            textSpan.style.display = '';
+            textSpan.style.height = '';
+            textSpan.style.width = '';
+            textSpan.style.verticalAlign = '';
+            textSpan.style.overflow = '';
+            textSpan.style.textAlign = '';
+            console.log('✅ Original text and styles restored');
+        } catch (error) {
+            console.error('❌ Error restoring original text:', error);
+        }
+    }
+    
+    // Clear CSS transforms as fallback
+    textSpan.style.transform = '';
+    textSpan.style.transformOrigin = '';
+    
+    console.log('✅ Custom curved text effect removed with full cleanup');
+}
+
+// Replace complex SVG functions with simple ones
+function createArchEffect(textSpan, curvature) {
+    createSimpleArchEffect(textSpan, curvature);
+}
+
+function removeArchEffect(textSpan) {
+    removeSimpleArchEffect(textSpan);
+}
+
+// Remove old functions completely
+function wrapTextForArch(textSpan) {
+    return;
+}
+
+function unwrapTextFromArch(textSpan) {
+    return;
+}
+
+function toggleArch() {
+    console.log('toggleArch called');
+    const archBtn = document.getElementById('archBtn');
+    const archSlider = document.getElementById('archCurve');
+    const archControls = document.querySelector('.arch-controls');
+    
+    let isArched = archBtn.classList.contains('active');
+    
+    if (isArched) {
+        // Turn off arch
+        archBtn.classList.remove('active');
+        archSlider.style.display = 'none';
+        archControls.style.display = 'none';
+        
+        // Remove arch from selected element
+        if (selectedElement && selectedElement.classList.contains('text-element')) {
+            const textSpan = selectedElement.querySelector('span[contenteditable]');
+            if (textSpan) {
+                textSpan.classList.remove('text-arch');
+                removeSimpleArchEffect(textSpan);
+            }
+        }
+        
+        // Reset slider value
+        archSlider.value = 0;
+        document.getElementById('archCurveValue').textContent = '0';
+    } else {
+        // Turn on arch
+        archBtn.classList.add('active');
+        archSlider.style.display = 'block';
+        archControls.style.display = 'block';
+        
+        // Apply arch to selected element if exists
+        if (selectedElement && selectedElement.classList.contains('text-element')) {
+            const textSpan = selectedElement.querySelector('span[contenteditable]');
+            if (textSpan) {
+                textSpan.classList.add('text-arch');
+                const curvature = parseFloat(archSlider.value) || 0;
+                createSimpleArchEffect(textSpan, curvature);
+            }
+        }
+    }
+}
+
+function updateArchCurve(value) {
+    console.log('updateArchCurve called with value:', value);
+    document.getElementById('archCurveValue').textContent = value;
+    
+    // Apply to currently selected element if it exists
+    if (selectedElement && selectedElement.classList.contains('text-element')) {
+        const textSpan = selectedElement.querySelector('span[contenteditable]');
+        if (textSpan && textSpan.classList.contains('text-arch')) {
+            const curvature = parseFloat(value);
+            
+            // Add smooth transition with throttling for better performance
+            if (textSpan.archUpdateTimeout) {
+                clearTimeout(textSpan.archUpdateTimeout);
+            }
+            
+            textSpan.archUpdateTimeout = setTimeout(() => {
+                createSimpleArchEffect(textSpan, curvature);
+            }, 50); // Reduced timeout for smoother real-time updates
         }
     }
 }
@@ -725,6 +1236,13 @@ function getCookie(name) {
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Custom Design Page loaded');
     
+    // Check if Hebrew SVG arch text function is loaded
+    if (typeof createCurvedText === 'undefined') {
+        console.warn('⚠️ Hebrew SVG arch text function not loaded - arch effects may not work properly');
+    } else {
+        console.log('✅ Hebrew SVG arch text function loaded successfully');
+    }
+    
     // Initialize color indicator
     updateColorIndicator('#000000');
     
@@ -814,7 +1332,40 @@ document.addEventListener('DOMContentLoaded', function() {
     const fontSizeValue = document.getElementById('fontSizeValue');
     if (fontSizeSlider && fontSizeValue) {
         fontSizeSlider.addEventListener('input', function() {
-            fontSizeValue.textContent = this.value;
+            fontSizeValue.textContent = this.value + 'px';
+            // Apply to selected text element immediately
+            changeFontSize(this.value);
+        });
+    }
+    
+    // Add text input handling - Enter key to add text
+    const textInput = document.getElementById('textInput');
+    if (textInput) {
+        textInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addText();
+            }
+        });
+    }
+    
+    // Add color picker event listener
+    const textColorPicker = document.getElementById('textColor');
+    if (textColorPicker) {
+        // Listen to both 'change' and 'input' events for real-time updates
+        textColorPicker.addEventListener('change', function() {
+            changeColor(this.value);
+        });
+        textColorPicker.addEventListener('input', function() {
+            changeColor(this.value);
+        });
+    }
+    
+    // Add font family selector event listener
+    const fontFamilySelector = document.getElementById('fontFamily');
+    if (fontFamilySelector) {
+        fontFamilySelector.addEventListener('change', function() {
+            changeFontFamily(this.value);
         });
     }
 });
