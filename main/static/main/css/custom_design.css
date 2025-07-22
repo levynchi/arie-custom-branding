@@ -841,6 +841,22 @@
     max-width: 100%;
 }
 
+/* Transparency score indicators */
+.freepik-result-item img.transparency-low {
+    border-color: rgba(40, 167, 69, 0.3);
+    box-shadow: 0 0 5px rgba(40, 167, 69, 0.2);
+}
+
+.freepik-result-item img.transparency-medium {
+    border-color: rgba(40, 167, 69, 0.5);
+    box-shadow: 0 0 8px rgba(40, 167, 69, 0.3);
+}
+
+.freepik-result-item img.transparency-high {
+    border-color: rgba(40, 167, 69, 0.8);
+    box-shadow: 0 0 12px rgba(40, 167, 69, 0.4);
+}
+
 .freepik-result-item .image-title {
     text-align: center;
     margin-top: 8px;
@@ -987,4 +1003,97 @@
     padding: 10px;
     border-radius: 6px;
     background-color: #e3f2fd;
+}
+
+/* Custom Design HTML specific styles */
+.product-thumbnail {
+    width: 30px;
+    height: 30px;
+    object-fit: cover;
+    border-radius: 4px;
+    margin-left: 8px;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.visible {
+    display: block !important;
+}
+
+.canvas-container {
+    display: block;
+}
+
+.with-background {
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.canvas-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+    opacity: 0.3;
+}
+
+.canvas-placeholder.hide-when-product {
+    display: none;
+}
+
+.product-preview-area {
+    display: block;
+}
+
+.product-preview-area.hide-when-no-product {
+    display: none;
+}
+
+/* Utility classes for display control */
+.d-block { display: block !important; }
+.d-none { display: none !important; }
+.d-flex { display: flex !important; }
+
+/* JavaScript generated elements */
+.js-placeholder-icon {
+    font-size: 100px;
+    opacity: 0.3;
+}
+
+.js-placeholder-text {
+    font-size: 0.9em;
+    color: #666;
+}
+
+.js-text-editable {
+    outline: none;
+}
+
+.js-image-small {
+    width: 100px;
+    height: 100px;
+}
+
+.js-image-medium {
+    width: 200px;
+    height: 200px;
+    object-fit: contain;
+}
+
+.js-emoji-large {
+    font-size: 48px;
+    line-height: 1;
+}
+
+.js-error-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    background: #f0f0f0;
+    font-size: 12px;
+    color: #666;
 }

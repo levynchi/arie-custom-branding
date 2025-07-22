@@ -42,7 +42,7 @@
                             <div class="d-flex align-items-center">
                                 {% if product.image %}
                                     <img src="{{ product.image.url }}" alt="{{ product.name }}" 
-                                         style="width: 30px; height: 30px; object-fit: cover; border-radius: 4px; margin-left: 8px;">
+                                         class="product-thumbnail">
                                 {% else %}
                                     <i class="fas fa-tshirt me-2"></i>
                                 {% endif %}
@@ -69,7 +69,7 @@
         <!-- Left Side - Canvas Area -->
         <div class="canvas-area">
             <!-- Tool Options Bar (appears above canvas when tool is selected) -->
-            <div class="tool-options-bar" id="toolOptionsBar" style="display: none;">
+            <div class="tool-options-bar hidden" id="toolOptionsBar">
                 <div class="tool-options-content">
                     <!-- AI Options -->
                     <div class="tool-options active" id="ai-options">
@@ -91,7 +91,7 @@
                                 </button>
                             </div>
                         </div>
-                        <div id="aiStatus" class="mt-2 text-center" style="display: none;">
+                        <div id="aiStatus" class="mt-2 text-center hidden">
                             <div class="spinner-border spinner-border-sm me-2"></div>
                             <span>יוצר עיצוב...</span>
                         </div>
@@ -130,17 +130,17 @@
                         </div>
                         
                         <!-- Search Results Area - moved here from outside -->
-                        <div id="searchResultsArea" style="display: none; margin-top: 15px;">
-                            <div id="freepikSearchStatus" class="text-center small" style="display: none;">
+                        <div id="searchResultsArea" class="hidden mt-3">
+                            <div id="freepikSearchStatus" class="text-center small hidden">
                                 <div class="spinner-border spinner-border-sm me-1"></div>
                                 <span>מחפש...</span>
                             </div>
                             
-                            <div id="imageSourceIndicator" class="text-center mb-2" style="display: none;">
+                            <div id="imageSourceIndicator" class="text-center mb-2 hidden">
                                 <small class="badge bg-info"></small>
                             </div>
                             
-                            <div id="freepikResults" style="display: none;">
+                            <div id="freepikResults" class="hidden">
                                 <!-- Results will be populated here -->
                             </div>
                         </div>
@@ -166,6 +166,10 @@
                                 <small class="text-muted">גודל: <span id="fontSizeValue">24</span></small>
                             </div>
                             <div class="col-md-2">
+                                <div class="current-color-indicator">
+                                    <div id="currentColorSwatch" class="current-color-swatch"></div>
+                                    <span id="currentColorText">שחור</span>
+                                </div>
                                 <input type="color" id="textColor" class="form-control form-control-color" value="#000000">
                             </div>
                             <div class="col-md-2">
@@ -189,6 +193,36 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Emoji Options -->
+                    <div class="tool-options" id="emoji-options">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-8">
+                                <button class="btn btn-outline-secondary btn-sm w-100" onclick="toggleEmojiPicker()">
+                                    <i class="fas fa-smile me-1"></i>בחר אימוג'י
+                                </button>
+                            </div>
+                            <div class="col-md-4">
+                                <button class="btn btn-warning btn-sm w-100" onclick="addEmoji('😀')">
+                                    <span style="font-size: 1.2em;">😀</span> מהיר
+                                </button>
+                            </div>
+                        </div>
+                        <div id="emojiPicker" class="emoji-picker mt-2 hidden">
+                            <span class="emoji-item" onclick="addEmoji('😀')">😀</span>
+                            <span class="emoji-item" onclick="addEmoji('😃')">😃</span>
+                            <span class="emoji-item" onclick="addEmoji('😄')">😄</span>
+                            <span class="emoji-item" onclick="addEmoji('😁')">😁</span>
+                            <span class="emoji-item" onclick="addEmoji('😆')">😆</span>
+                            <span class="emoji-item" onclick="addEmoji('😅')">😅</span>
+                            <span class="emoji-item" onclick="addEmoji('🤣')">🤣</span>
+                            <span class="emoji-item" onclick="addEmoji('😂')">😂</span>
+                            <span class="emoji-item" onclick="addEmoji('❤️')">❤️</span>
+                            <span class="emoji-item" onclick="addEmoji('👍')">👍</span>
+                            <span class="emoji-item" onclick="addEmoji('👎')">👎</span>
+                            <span class="emoji-item" onclick="addEmoji('🔥')">🔥</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -200,21 +234,19 @@
             </div>
 
             <!-- Canvas Container -->
-            <div class="canvas-container" style="display: block;">
+            <div class="canvas-container">
                 <div id="designCanvas" class="design-canvas{% if selected_product %} with-product{% endif %}"
                      {% if selected_product and selected_product.image %}
                      style="background-image: url('{{ selected_product.image.url }}');"
                      {% endif %}>
                     
-                    <div id="placeholderText" class="canvas-placeholder" 
-                         {% if selected_product %}style="display: none;"{% endif %}>
-                        <i class="fas fa-mouse-pointer" style="font-size: 3rem; opacity: 0.3;"></i>
+                    <div id="placeholderText" class="canvas-placeholder{% if selected_product %} hide-when-product{% endif %}">
+                        <i class="fas fa-mouse-pointer canvas-placeholder"></i>
                         <p>בחר כלי מהצד הימני להתחיל לעצב</p>
                     </div>
                     
                     <!-- Print Dimensions Display -->
-                    <div id="printDimensions" class="print-dimensions" 
-                         {% if selected_product %}style="display: block;"{% else %}style="display: none;"{% endif %}>
+                    <div id="printDimensions" class="print-dimensions{% if selected_product %} d-block{% else %} d-none{% endif %}">
                         <small>
                             <i class="fas fa-ruler me-1"></i>
                             <span id="printDimensionsText">

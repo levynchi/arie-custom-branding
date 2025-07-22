@@ -56,7 +56,7 @@ function selectProductFromDropdown(element, event) {
 function showNoProductMessage() {
     const message = document.getElementById('noProductMessage');
     if (message) {
-        message.style.display = 'block';
+        message.classList.remove('d-none');
         // Scroll to the message
         message.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
@@ -65,7 +65,7 @@ function showNoProductMessage() {
 function hideNoProductMessage() {
     const message = document.getElementById('noProductMessage');
     if (message) {
-        message.style.display = 'none';
+        message.classList.add('d-none');
     }
 }
 
@@ -95,7 +95,7 @@ function enableDesignTools() {
     // הצגת סרגל הכלים
     const toolOptionsBar = document.getElementById('toolOptionsBar');
     if (toolOptionsBar) {
-        toolOptionsBar.style.display = 'block';
+        toolOptionsBar.classList.remove('hidden');
     }
 }
 
@@ -120,7 +120,7 @@ function disableDesignTools() {
     // הסתרת סרגל הכלים
     const toolOptionsBar = document.getElementById('toolOptionsBar');
     if (toolOptionsBar) {
-        toolOptionsBar.style.display = 'none';
+        toolOptionsBar.classList.add('hidden');
     }
     
     // ניקוי הכלי הנוכחי
@@ -138,16 +138,16 @@ function updateCanvasBackground(productElement) {
     if (productImage && productImage.trim() !== '') {
         canvas.style.backgroundImage = `url('${productImage}')`;
         canvas.classList.add('with-product');
-        placeholderText.style.display = 'none';
+        placeholderText.classList.add('d-none');
     } else {
         // Show placeholder for products without image
         canvas.style.backgroundImage = 'none';
         canvas.classList.remove('with-product');
-        placeholderText.style.display = 'block';
+        placeholderText.classList.remove('d-none');
         placeholderText.innerHTML = `
-            <i class="fas fa-tshirt" style="font-size: 100px; opacity: 0.3;"></i>
+            <i class="fas fa-tshirt js-placeholder-icon"></i>
             <p>נבחר מוצר: ${productElement.dataset.productName}</p>
-            <p style="font-size: 0.9em; color: #666;">התחל לעצב על המוצר</p>
+            <p class="js-placeholder-text">התחל לעצב על המוצר</p>
         `;
     }
     
@@ -158,9 +158,11 @@ function updateCanvasBackground(productElement) {
     
     if (printSize) {
         printDimensionsText.textContent = printSize;
-        printDimensionsDiv.style.display = 'block';
+        printDimensionsDiv.classList.add('d-block');
+        printDimensionsDiv.classList.remove('d-none');
     } else {
-        printDimensionsDiv.style.display = 'none';
+        printDimensionsDiv.classList.add('d-none');
+        printDimensionsDiv.classList.remove('d-block');
     }
 }
 
@@ -193,16 +195,16 @@ function selectProduct(productElement) {
     if (productImage && productImage.trim() !== '') {
         canvas.style.backgroundImage = `url('${productImage}')`;
         canvas.classList.add('with-product');
-        placeholderText.style.display = 'none';
+        placeholderText.classList.add('d-none');
     } else {
         // Show placeholder for products without image
         canvas.style.backgroundImage = 'none';
         canvas.classList.remove('with-product');
-        placeholderText.style.display = 'block';
+        placeholderText.classList.remove('d-none');
         placeholderText.innerHTML = `
-            <i class="fas fa-tshirt" style="font-size: 100px; opacity: 0.3;"></i>
+            <i class="fas fa-tshirt js-placeholder-icon"></i>
             <p>נבחר מוצר: ${productElement.querySelector('.product-name').textContent}</p>
-            <p style="font-size: 0.9em; color: #666;">התחל לעצב על המוצר</p>
+            <p class="js-placeholder-text">התחל לעצב על המוצר</p>
         `;
     }
     
@@ -212,9 +214,11 @@ function selectProduct(productElement) {
     
     if (printDimensions) {
         printDimensionsText.textContent = printDimensions;
-        printDimensionsDiv.style.display = 'block';
+        printDimensionsDiv.classList.add('d-block');
+        printDimensionsDiv.classList.remove('d-none');
     } else {
-        printDimensionsDiv.style.display = 'none';
+        printDimensionsDiv.classList.add('d-none');
+        printDimensionsDiv.classList.remove('d-block');
     }
 }
 
@@ -232,7 +236,7 @@ function addText() {
     textElement.className = 'design-element text-element';
     textElement.id = 'element_' + (++elementCounter);
     textElement.innerHTML = `
-        <span contenteditable="true" style="outline: none;">טקסט חדש</span>
+        <span contenteditable="true" class="js-text-editable">טקסט חדש</span>
         <button class="delete-btn" onclick="deleteElement('${textElement.id}')">&times;</button>
     `;
     textElement.style.left = '50px';
@@ -260,7 +264,7 @@ function addImage(event) {
             imageElement.className = 'design-element';
             imageElement.id = 'element_' + (++elementCounter);
             imageElement.innerHTML = `
-                <img src="${e.target.result}" class="image-element" style="width: 100px; height: 100px;">
+                <img src="${e.target.result}" class="image-element js-image-small">
                 <button class="delete-btn" onclick="deleteElement('${imageElement.id}')">&times;</button>
             `;
             imageElement.style.left = '100px';
@@ -285,7 +289,7 @@ function addEmoji(emoji) {
     emojiElement.className = 'design-element text-element';
     emojiElement.id = 'element_' + (++elementCounter);
     emojiElement.innerHTML = `
-        <span style="font-size: 48px; line-height: 1;">${emoji}</span>
+        <span class="js-emoji-large">${emoji}</span>
         <button class="delete-btn" onclick="deleteElement('${emojiElement.id}')">&times;</button>
     `;
     emojiElement.style.left = '150px';
@@ -295,7 +299,13 @@ function addEmoji(emoji) {
     makeElementInteractive(emojiElement);
     
     // Hide emoji picker
-    document.getElementById('emojiPicker').style.display = 'none';
+    document.getElementById('emojiPicker').classList.add('hidden');
+}
+
+// Toggle emoji picker
+function toggleEmojiPicker() {
+    const emojiPicker = document.getElementById('emojiPicker');
+    emojiPicker.classList.toggle('hidden');
 }
 
 // Element Interaction
@@ -642,7 +652,7 @@ async function generateAIDesign() {
             imageElement.className = 'design-element ai-generated';
             imageElement.id = 'element_' + (++elementCounter);
             imageElement.innerHTML = `
-                <img src="${data.image_url}" class="image-element" style="width: 200px; height: 200px; object-fit: contain;">
+                <img src="${data.image_url}" class="image-element js-image-medium">
                 <button class="delete-btn" onclick="deleteElement('${imageElement.id}')">&times;</button>
                 <button class="edit-image-btn" onclick="editAIImage('${data.image_url}')" title="ערוך תמונה זו">
                     <i class="fas fa-edit"></i>
@@ -929,7 +939,7 @@ async function generateAIImageEdit(prompt, baseImageUrl) {
             imageElement.className = 'design-element ai-generated ai-edited';
             imageElement.id = 'element_' + (++elementCounter);
             imageElement.innerHTML = `
-                <img src="${data.image_url}" class="image-element" style="width: 200px; height: 200px; object-fit: contain;">
+                <img src="${data.image_url}" class="image-element js-image-medium">
                 <button class="delete-btn" onclick="deleteElement('${imageElement.id}')">&times;</button>
                 <button class="edit-image-btn" onclick="editAIImage('${data.image_url}')" title="ערוך תמונה זו">
                     <i class="fas fa-edit"></i>
@@ -1394,11 +1404,16 @@ function displayFreepikResults(results) {
             </span>`;
         }
         
-        // Add transparency score as a subtle indicator
-        let transparencyIndicator = '';
+        // Add transparency score as a CSS class
+        let transparencyClass = '';
         if (image.transparency_score && image.transparency_score > 30) {
-            const opacity = Math.min(image.transparency_score / 100, 0.8);
-            transparencyIndicator = `style="border: 2px solid rgba(40, 167, 69, ${opacity});"`;
+            if (image.transparency_score > 70) {
+                transparencyClass = 'transparency-high';
+            } else if (image.transparency_score > 50) {
+                transparencyClass = 'transparency-medium';
+            } else {
+                transparencyClass = 'transparency-low';
+            }
         }
         
         html += `
@@ -1406,8 +1421,7 @@ function displayFreepikResults(results) {
                 ${badges}
                 <img src="${image.thumbnail || image.preview}" 
                      alt="${image.title}" 
-                     class="img-fluid rounded"
-                     ${transparencyIndicator}>
+                     class="img-fluid rounded ${transparencyClass}">
                 <div class="image-title">
                     <small title="${image.title}">${image.title.length > 30 ? image.title.substring(0, 30) + '...' : image.title}</small>
                 </div>
@@ -1528,7 +1542,7 @@ function addFreepikImageToCanvas(imageUrl, imageTitle) {
         img.onerror = function() {
             console.error('Failed to load image:', imageUrl);
             imageElement.innerHTML = `
-                <div style="display: flex; align-items: center; justify-content: center; height: 100%; background: #f0f0f0; font-size: 12px; color: #666;">
+                <div class="js-error-placeholder">
                     <i class="fas fa-image"></i>
                 </div>
             `;
@@ -1593,9 +1607,9 @@ function selectTool(button, toolType) {
     const selectedOptions = document.getElementById(toolType + '-options');
     if (selectedOptions) {
         selectedOptions.classList.add('active');
-        document.getElementById('toolOptionsBar').style.display = 'block';
+        document.getElementById('toolOptionsBar').classList.remove('hidden');
     } else {
-        document.getElementById('toolOptionsBar').style.display = 'none';
+        document.getElementById('toolOptionsBar').classList.add('hidden');
     }
     
     // Show search results area for images tool
@@ -1604,12 +1618,12 @@ function selectTool(button, toolType) {
     
     if (toolType === 'images') {
         if (searchResultsArea) {
-            searchResultsArea.style.display = 'block';
+            searchResultsArea.classList.remove('hidden');
             console.log('searchResultsArea displayed for images tool');
         }
     } else {
         if (searchResultsArea) {
-            searchResultsArea.style.display = 'none';
+            searchResultsArea.classList.add('hidden');
             console.log('searchResultsArea hidden for non-images tool');
         }
     }
