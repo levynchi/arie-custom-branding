@@ -140,7 +140,7 @@
                                 <small class="badge bg-info"></small>
                             </div>
                             
-                            <div id="freepikResults" class="search-results" style="display: none;">
+                            <div id="freepikResults" style="display: none;">
                                 <!-- Results will be populated here -->
                             </div>
                         </div>
@@ -242,42 +242,69 @@
 
         <!-- Right Side - Tool Buttons -->
         <div class="tools-sidebar">
-            <div class="tools-list">
-                <button class="tool-button active" data-tool="ai" onclick="selectTool(this, 'ai')">
+            <!-- Product Selection Required Message -->
+            <div id="toolsDisabledMessage" class="alert alert-info text-center mb-3{% if selected_product %} d-none{% endif %}">
+                <i class="fas fa-info-circle me-2"></i>
+                <strong>בחר מוצר תחילה</strong><br>
+                <small>יש לבחור מוצר מהתפריט למעלה כדי להפעיל את כלי העיצוב</small>
+            </div>
+            
+            <div class="tools-list" id="toolsList">
+                <button class="tool-button{% if not selected_product %} disabled{% endif %}" 
+                        data-tool="ai" 
+                        onclick="selectTool(this, 'ai')"
+                        {% if not selected_product %}disabled{% endif %}>
                     <i class="fas fa-robot"></i>
                     <span>יצירת עיצוב AI</span>
                 </button>
                 
-                <button class="tool-button" data-tool="images" onclick="selectTool(this, 'images')">
+                <button class="tool-button{% if not selected_product %} disabled{% endif %}" 
+                        data-tool="images" 
+                        onclick="selectTool(this, 'images')"
+                        {% if not selected_product %}disabled{% endif %}>
                     <i class="fas fa-images"></i>
                     <span>חיפוש תמונות מפרייפיק</span>
                 </button>
                 
-                <button class="tool-button" data-tool="text" onclick="selectTool(this, 'text')">
+                <button class="tool-button{% if not selected_product %} disabled{% endif %}" 
+                        data-tool="text" 
+                        onclick="selectTool(this, 'text')"
+                        {% if not selected_product %}disabled{% endif %}>
                     <i class="fas fa-font"></i>
                     <span>הוסף טקסט</span>
                 </button>
                 
-                <button class="tool-button" data-tool="upload" onclick="selectTool(this, 'upload')">
+                <button class="tool-button{% if not selected_product %} disabled{% endif %}" 
+                        data-tool="upload" 
+                        onclick="selectTool(this, 'upload')"
+                        {% if not selected_product %}disabled{% endif %}>
                     <i class="fas fa-upload"></i>
                     <span>הוספת תמונה</span>
                 </button>
 
                 <div class="tools-divider"></div>
 
-                <button class="tool-button" data-tool="shapes" onclick="selectTool(this, 'shapes')">
+                <button class="tool-button{% if not selected_product %} disabled{% endif %}" 
+                        data-tool="shapes" 
+                        onclick="selectTool(this, 'shapes')"
+                        {% if not selected_product %}disabled{% endif %}>
                     <i class="fas fa-shapes"></i>
                     <span>צורות</span>
                 </button>
                 
-                <button class="tool-button" data-tool="qr" onclick="selectTool(this, 'qr')">
+                <button class="tool-button{% if not selected_product %} disabled{% endif %}" 
+                        data-tool="qr" 
+                        onclick="selectTool(this, 'qr')"
+                        {% if not selected_product %}disabled{% endif %}>
                     <i class="fas fa-qrcode"></i>
                     <span>QR Code</span>
                 </button>
 
                 <div class="tools-divider"></div>
 
-                <button class="tool-button danger" onclick="clearCanvas()">
+                <button class="tool-button danger{% if not selected_product %} disabled{% endif %}" 
+                        onclick="clearCanvas()"
+                        {% if not selected_product %}disabled{% endif %}>
                     <i class="fas fa-trash"></i>
                     <span>נקה הכל</span>
                 </button>
@@ -311,5 +338,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'main/js/custom_design.js' %}?v=20250721114000"></script>
+<script src="{% static 'main/js/custom_design.js' %}?v=20250722081200"></script>
 {% endblock %}

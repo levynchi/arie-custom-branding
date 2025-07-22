@@ -45,6 +45,9 @@ function selectProductFromDropdown(element, event) {
     updateCanvasBackground(element);
     hideNoProductMessage(); // הסתרת הודעת האזהרה
     
+    // הפעלת כלי העיצוב
+    enableDesignTools();
+    
     // סגירת ה-dropdown
     setTimeout(closeDropdownManually, 100);
 }
@@ -64,6 +67,67 @@ function hideNoProductMessage() {
     if (message) {
         message.style.display = 'none';
     }
+}
+
+// הפעלת כלי העיצוב כאשר נבחר מוצר
+function enableDesignTools() {
+    console.log('Enabling design tools');
+    
+    // הסתרת הודעת הכלים המושבתים
+    const disabledMessage = document.getElementById('toolsDisabledMessage');
+    if (disabledMessage) {
+        disabledMessage.classList.add('d-none');
+    }
+    
+    // הפעלת כל כלי העיצוב
+    const toolButtons = document.querySelectorAll('.tool-button');
+    toolButtons.forEach(button => {
+        button.classList.remove('disabled');
+        button.removeAttribute('disabled');
+    });
+    
+    // הפעלת כלי AI כברירת מחדל
+    const aiTool = document.querySelector('[data-tool="ai"]');
+    if (aiTool && !aiTool.classList.contains('active')) {
+        selectTool(aiTool, 'ai');
+    }
+    
+    // הצגת סרגל הכלים
+    const toolOptionsBar = document.getElementById('toolOptionsBar');
+    if (toolOptionsBar) {
+        toolOptionsBar.style.display = 'block';
+    }
+}
+
+// השבתת כלי העיצוב כאשר אין מוצר נבחר
+function disableDesignTools() {
+    console.log('Disabling design tools');
+    
+    // הצגת הודעת הכלים המושבתים
+    const disabledMessage = document.getElementById('toolsDisabledMessage');
+    if (disabledMessage) {
+        disabledMessage.classList.remove('d-none');
+    }
+    
+    // השבתת כל כלי העיצוב
+    const toolButtons = document.querySelectorAll('.tool-button');
+    toolButtons.forEach(button => {
+        button.classList.add('disabled');
+        button.classList.remove('active');
+        button.setAttribute('disabled', 'disabled');
+    });
+    
+    // הסתרת סרגל הכלים
+    const toolOptionsBar = document.getElementById('toolOptionsBar');
+    if (toolOptionsBar) {
+        toolOptionsBar.style.display = 'none';
+    }
+    
+    // ניקוי הכלי הנוכחי
+    const toolOptions = document.querySelectorAll('.tool-options');
+    toolOptions.forEach(option => {
+        option.classList.remove('active');
+    });
 }
 
 function updateCanvasBackground(productElement) {
@@ -654,10 +718,27 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize color indicator
     updateColorIndicator('#000000');
     
-    // Auto-select product if one is already selected
-    const selectedProduct = document.querySelector('.product-option.selected');
-    if (selectedProduct) {
-        selectProduct(selectedProduct);
+    // בדיקה האם יש מוצר נבחר מראש
+    const preSelectedDropdownItem = document.querySelector('.product-dropdown-item.active');
+    if (preSelectedDropdownItem) {
+        console.log('Pre-selected product found, enabling tools');
+        enableDesignTools();
+        // Update the selected product object
+        selectedProduct = { 
+            id: preSelectedDropdownItem.dataset.productId, 
+            image: preSelectedDropdownItem.dataset.productImage,
+            name: preSelectedDropdownItem.dataset.productName,
+            price: preSelectedDropdownItem.dataset.productPrice
+        };
+    } else {
+        console.log('No product selected, disabling tools');
+        disableDesignTools();
+    }
+    
+    // Auto-select product if one is already selected (old method)
+    const selectedProductOld = document.querySelector('.product-option.selected');
+    if (selectedProductOld) {
+        selectProduct(selectedProductOld);
     }
     
     // Canvas click handling
@@ -1303,12 +1384,12 @@ function displayFreepikResults(results) {
         // Create indicator badges based on image properties
         let badges = '';
         if (image.is_likely_transparent) {
-            badges += `<span class="badge bg-success position-absolute top-0 start-0 m-1" style="font-size: 0.7em;" title="רקע שקוף/קל להסרה">
+            badges += `<span class="badge bg-success transparent-indicator" title="רקע שקוף/קל להסרה">
                 <i class="fas fa-magic"></i>
             </span>`;
         }
         if (image.is_likely_vector) {
-            badges += `<span class="badge bg-primary position-absolute top-0 end-0 m-1" style="font-size: 0.7em;" title="תמונה וקטורית">
+            badges += `<span class="badge bg-primary vector-indicator" title="תמונה וקטורית">
                 <i class="fas fa-vector-square"></i>
             </span>`;
         }
@@ -1321,17 +1402,14 @@ function displayFreepikResults(results) {
         }
         
         html += `
-            <div class="col-6 col-md-4">
-                <div class="freepik-result-item position-relative" onclick="selectFreepikImage('${image.id}', '${image.preview}', '${image.title}')">
-                    ${badges}
-                    <img src="${image.thumbnail || image.preview}" 
-                         alt="${image.title}" 
-                         class="img-fluid rounded"
-                         ${transparencyIndicator}
-                         style="width: 100%; height: 80px; object-fit: cover; cursor: pointer;">
-                    <div class="text-center mt-1">
-                        <small class="text-muted" title="${image.title}">${image.title.length > 30 ? image.title.substring(0, 30) + '...' : image.title}</small>
-                    </div>
+            <div class="freepik-result-item position-relative" onclick="selectFreepikImage('${image.id}', '${image.preview}', '${image.title}')">
+                ${badges}
+                <img src="${image.thumbnail || image.preview}" 
+                     alt="${image.title}" 
+                     class="img-fluid rounded"
+                     ${transparencyIndicator}>
+                <div class="image-title">
+                    <small title="${image.title}">${image.title.length > 30 ? image.title.substring(0, 30) + '...' : image.title}</small>
                 </div>
             </div>
         `;
@@ -1484,6 +1562,19 @@ function addFreepikImageToCanvas(imageUrl, imageTitle) {
 // Tool Selection Functions for New Interface
 function selectTool(button, toolType) {
     console.log('Tool selected:', toolType);
+    
+    // בדיקה אם יש מוצר נבחר
+    if (!selectedProduct || !selectedProduct.id) {
+        console.log('No product selected - showing warning');
+        showNoProductMessage();
+        return false;
+    }
+    
+    // בדיקה אם הכלי מושבת
+    if (button.classList.contains('disabled') || button.hasAttribute('disabled')) {
+        console.log('Tool is disabled');
+        return false;
+    }
     
     // Remove active class from all tool buttons
     document.querySelectorAll('.tool-button').forEach(btn => {

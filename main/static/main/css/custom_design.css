@@ -105,6 +105,22 @@
     border-color: #007bff;
 }
 
+.tool-button.disabled {
+    background: #f8f9fa !important;
+    color: #6c757d !important;
+    border-color: #dee2e6 !important;
+    cursor: not-allowed !important;
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.tool-button.disabled:hover {
+    background: #f8f9fa !important;
+    color: #6c757d !important;
+    border-color: #dee2e6 !important;
+    transform: none !important;
+}
+
 .tool-button.danger {
     background: #dc3545;
     color: white;
@@ -114,6 +130,12 @@
 .tool-button.danger:hover {
     background: #c82333;
     border-color: #c82333;
+}
+
+.tool-button.danger.disabled {
+    background: #f8f9fa !important;
+    color: #6c757d !important;
+    border-color: #dee2e6 !important;
 }
 
 .tool-button i {
@@ -128,8 +150,6 @@
 }
 
 .search-results {
-    max-height: 200px;
-    overflow-y: auto;
     margin-top: 15px;
 }
 
@@ -793,19 +813,42 @@
 .freepik-result-item {
     cursor: pointer;
     transition: all 0.3s ease;
-    padding: 5px;
+    padding: 8px;
     border-radius: 8px;
+    background: white;
+    border: 1px solid #e0e0e0;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center;
+    justify-content: center;
+    max-width: 100%;
+    width: auto !important;
 }
 
 .freepik-result-item:hover {
     transform: scale(1.05);
     box-shadow: 0 4px 15px rgba(0,0,0,0.2);
     background-color: #f8f9fa;
+    border-color: #007bff;
 }
 
 .freepik-result-item img {
     border: 2px solid transparent;
     transition: border-color 0.3s ease;
+    height: 120px;
+    object-fit: cover;
+    cursor: pointer;
+    max-width: 100%;
+}
+
+.freepik-result-item .image-title {
+    text-align: center;
+    margin-top: 8px;
+}
+
+.freepik-result-item .image-title small {
+    display: block;
+    color: #6c757d;
 }
 
 .freepik-result-item:hover img {
@@ -817,6 +860,26 @@
     border-radius: 8px;
     padding: 10px;
     background-color: #fafafa;
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 10px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+/* Responsive behavior for Freepik Results */
+@media (max-width: 768px) {
+    #freepikResults {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+}
+
+@media (max-width: 480px) {
+    #freepikResults {
+        grid-template-columns: 1fr;
+        gap: 6px;
+    }
 }
 
 #freepikResults:empty {
@@ -867,6 +930,18 @@
     padding: 0.25em 0.4em;
     z-index: 10;
     box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.freepik-result-item .badge.transparent-indicator {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+}
+
+.freepik-result-item .badge.vector-indicator {
+    position: absolute;
+    top: 4px;
+    right: 4px;
 }
 
 .freepik-result-item .badge i {
