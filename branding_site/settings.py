@@ -128,7 +128,7 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # Static files directories
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'main/static'),
+    BASE_DIR / 'main/static',
 ]
 
 # Media files (user uploads)

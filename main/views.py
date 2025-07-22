@@ -217,29 +217,6 @@ def custom_design(request):
     }
     return render(request, 'main/custom_design.html', context)
 
-def custom_design_modern(request):
-    """דף עיצוב אישי - גרסה מודרנית"""
-    import time
-    products = Product.objects.filter(is_active=True)
-    categories = Category.objects.filter(is_active=True)
-    
-    # בדיקה אם יש מוצר נבחר מראש
-    selected_product_id = request.GET.get('product')
-    selected_product = None
-    if selected_product_id:
-        try:
-            selected_product = Product.objects.get(id=selected_product_id, is_active=True)
-        except Product.DoesNotExist:
-            pass
-    
-    context = {
-        'products': products,
-        'categories': categories,
-        'selected_product': selected_product,
-        'current_time': int(time.time()),  # Cache busting
-    }
-    return render(request, 'main/custom_design_modern.html', context)
-
 @csrf_exempt
 def save_design(request):
     """שמירת עיצוב אישי"""

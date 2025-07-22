@@ -705,6 +705,27 @@ document.addEventListener('DOMContentLoaded', function() {
     } else {
         console.log('AI button NOT found');
     }
+    
+    // Tool initialization - Show tool options bar by default
+    const toolOptionsBar = document.getElementById('toolOptionsBar');
+    if (toolOptionsBar) {
+        toolOptionsBar.style.display = 'block';
+    }
+    
+    // Initialize AI tool as active
+    const aiToolButton = document.querySelector('[data-tool="ai"]');
+    if (aiToolButton) {
+        selectTool(aiToolButton, 'ai');
+    }
+    
+    // Update font size display
+    const fontSizeSlider = document.getElementById('fontSize');
+    const fontSizeValue = document.getElementById('fontSizeValue');
+    if (fontSizeSlider && fontSizeValue) {
+        fontSizeSlider.addEventListener('input', function() {
+            fontSizeValue.textContent = this.value;
+        });
+    }
 });
 
 // פונקציות לטיפול בתמונת הסטייל
@@ -935,10 +956,6 @@ function sortByTransparency() {
     // Show sorting notification
     showFilterToast(sortedResults.length, lastSearchResults.length, ' [ממוין לפי שקיפות]');
 }
-
-/**
- * Toggle transparent background filter
- */
 
 /**
  * Toggle transparent background filter
@@ -1507,28 +1524,35 @@ function selectTool(button, toolType) {
     }
 }
 
-// Initialize the AI tool as active on page load
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM loaded, initializing tools');
-    
-    // Show tool options bar by default
-    const toolOptionsBar = document.getElementById('toolOptionsBar');
-    if (toolOptionsBar) {
-        toolOptionsBar.style.display = 'block';
+// Zoom Functions
+function zoomIn() {
+    const canvas = document.getElementById('designCanvas');
+    if (canvas) {
+        const currentScale = parseFloat(canvas.style.transform.replace('scale(', '').replace(')', '') || '1');
+        const newScale = Math.min(currentScale * 1.2, 3); // Maximum 300%
+        canvas.style.transform = `scale(${newScale})`;
+        canvas.style.transformOrigin = 'center center';
+        
+        // Update zoom level display
+        const zoomLevel = document.querySelector('.zoom-level');
+        if (zoomLevel) {
+            zoomLevel.textContent = `${Math.round(newScale * 100)}%`;
+        }
     }
-    
-    // Initialize AI tool as active
-    const aiButton = document.querySelector('[data-tool="ai"]');
-    if (aiButton) {
-        selectTool(aiButton, 'ai');
+}
+
+function zoomOut() {
+    const canvas = document.getElementById('designCanvas');
+    if (canvas) {
+        const currentScale = parseFloat(canvas.style.transform.replace('scale(', '').replace(')', '') || '1');
+        const newScale = Math.max(currentScale / 1.2, 0.25); // Minimum 25%
+        canvas.style.transform = `scale(${newScale})`;
+        canvas.style.transformOrigin = 'center center';
+        
+        // Update zoom level display
+        const zoomLevel = document.querySelector('.zoom-level');
+        if (zoomLevel) {
+            zoomLevel.textContent = `${Math.round(newScale * 100)}%`;
+        }
     }
-    
-    // Update font size display
-    const fontSizeSlider = document.getElementById('fontSize');
-    const fontSizeValue = document.getElementById('fontSizeValue');
-    if (fontSizeSlider && fontSizeValue) {
-        fontSizeSlider.addEventListener('input', function() {
-            fontSizeValue.textContent = this.value;
-        });
-    }
-});
+}
