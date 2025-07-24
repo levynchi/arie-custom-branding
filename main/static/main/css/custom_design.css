@@ -1224,3 +1224,33 @@ select.font-preview-select[data-current-font="Noto Sans Hebrew"] { font-family: 
     font-size: 12px;
     color: #666;
 }
+
+/* Delete button styles for design images */
+.delete-btn {
+    transition: all 0.2s ease !important;
+    opacity: 0.8;
+}
+
+.delete-btn:hover {
+    background: #c82333 !important;
+    transform: scale(1.1);
+    opacity: 1;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3) !important;
+}
+
+.delete-btn:active {
+    transform: scale(0.95);
+}
+
+/* Show delete button on image hover */
+.design-image:hover .delete-btn,
+.design-element:hover .delete-btn {
+    opacity: 1;
+}
+
+/* Make sure delete buttons are always clickable */
+.design-image .delete-btn,
+.design-element .delete-btn {
+    pointer-events: auto;
+    user-select: none;
+}

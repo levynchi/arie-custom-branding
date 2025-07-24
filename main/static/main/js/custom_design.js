@@ -1611,9 +1611,10 @@ function addImageToCanvas(imageUrl, imageAlt, x, y) {
     // Delete button
     const deleteBtn = document.createElement('button');
     deleteBtn.innerHTML = '×';
+    deleteBtn.className = 'delete-btn';
     deleteBtn.style.position = 'absolute';
-    deleteBtn.style.top = '-10px';
-    deleteBtn.style.right = '-10px';
+    deleteBtn.style.top = '-8px';
+    deleteBtn.style.right = '-8px';
     deleteBtn.style.width = '20px';
     deleteBtn.style.height = '20px';
     deleteBtn.style.background = '#dc3545';
@@ -1621,28 +1622,34 @@ function addImageToCanvas(imageUrl, imageAlt, x, y) {
     deleteBtn.style.border = 'none';
     deleteBtn.style.borderRadius = '50%';
     deleteBtn.style.cursor = 'pointer';
-    deleteBtn.style.fontSize = '12px';
-    deleteBtn.style.display = 'none';
-    deleteBtn.style.zIndex = '11';
+    deleteBtn.style.fontSize = '14px';
+    deleteBtn.style.fontWeight = 'bold';
+    deleteBtn.style.display = 'flex';
+    deleteBtn.style.alignItems = 'center';
+    deleteBtn.style.justifyContent = 'center';
+    deleteBtn.style.zIndex = '20';
+    deleteBtn.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+    deleteBtn.title = 'מחק תמונה';
     
     // Event listeners
     imageContainer.addEventListener('click', function() {
         // Remove selection from other elements
         document.querySelectorAll('.design-image').forEach(el => {
             el.style.border = '2px solid transparent';
-            el.querySelector('.resize-handle').style.display = 'none';
-            el.querySelector('button').style.display = 'none';
+            const resizeHandle = el.querySelector('.resize-handle');
+            if (resizeHandle) resizeHandle.style.display = 'none';
         });
         
         // Select this element
         this.style.border = '2px solid #007bff';
         resizeHandle.style.display = 'block';
-        deleteBtn.style.display = 'block';
     });
     
     deleteBtn.addEventListener('click', function(e) {
         e.stopPropagation();
-        imageContainer.remove();
+        if (confirm('האם אתה בטוח שברצונך למחוק את התמונה?')) {
+            imageContainer.remove();
+        }
     });
     
     // Make draggable
@@ -2360,6 +2367,41 @@ function addFreepikImageToCanvas(imageUrl, imageTitle) {
         img.style.objectFit = 'cover';
         img.style.borderRadius = '6px';
         
+        // Create delete button
+        const deleteBtn = document.createElement('button');
+        deleteBtn.innerHTML = '×';
+        deleteBtn.className = 'delete-btn';
+        deleteBtn.style.position = 'absolute';
+        deleteBtn.style.top = '-8px';
+        deleteBtn.style.right = '-8px';
+        deleteBtn.style.width = '20px';
+        deleteBtn.style.height = '20px';
+        deleteBtn.style.background = '#dc3545';
+        deleteBtn.style.color = 'white';
+        deleteBtn.style.border = 'none';
+        deleteBtn.style.borderRadius = '50%';
+        deleteBtn.style.cursor = 'pointer';
+        deleteBtn.style.fontSize = '14px';
+        deleteBtn.style.fontWeight = 'bold';
+        deleteBtn.style.display = 'flex';
+        deleteBtn.style.alignItems = 'center';
+        deleteBtn.style.justifyContent = 'center';
+        deleteBtn.style.zIndex = '20';
+        deleteBtn.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+        deleteBtn.title = 'מחק תמונה';
+        
+        // Add delete button event
+        deleteBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            e.preventDefault();
+            
+            // Confirm deletion
+            if (confirm('האם אתה בטוח שברצונך למחוק את התמונה?')) {
+                imageElement.remove();
+                console.log('Image deleted from canvas');
+            }
+        });
+        
         // Handle image load errors
         img.onerror = function() {
             console.error('Failed to load image:', imageUrl);
@@ -2371,6 +2413,7 @@ function addFreepikImageToCanvas(imageUrl, imageTitle) {
         };
         
         imageElement.appendChild(img);
+        imageElement.appendChild(deleteBtn);
         
         // Add drag functionality
         imageElement.addEventListener('mousedown', startDrag);
