@@ -743,7 +743,6 @@ function changeFontFamily(fontFamily) {
         // Also select the parent element to make sure it's in the selected state
         const parentElement = focusedElement.closest('.design-element');
         if (parentElement && !parentElement.classList.contains('selected')) {
-            console.log('Auto-selecting parent element');
             selectElement(parentElement);
         }
     }
@@ -772,6 +771,7 @@ function toggleBold() {
         }
     }
     
+    // Also update any focused contenteditable element (blue border state)
     // Also update any focused contenteditable element (blue border state)
     const focusedElement = document.activeElement;
     if (focusedElement && focusedElement.hasAttribute('contenteditable')) {
@@ -831,23 +831,23 @@ function createSimpleArchEffect(textSpan, curvature) {
             console.log('Zero curvature - no arch effect');
             return;
         } else if (absCurvature <= 1) {
-            // Ultra-smooth start for 0.1 to 1
-            radius = 300 - (absCurvature * 50); // 300 to 250
+            // Very sharp curve for 0.1 to 1
+            radius = 20 + (absCurvature * 30); // 20 to 50
         } else if (absCurvature <= 5) {
-            // Smooth for 1 to 5
-            radius = 250 - ((absCurvature - 1) * 30); // 250 to 130
+            // Sharp for 1 to 5
+            radius = 50 + ((absCurvature - 1) * 20); // 50 to 130
         } else if (absCurvature <= 15) {
             // Medium for 5 to 15  
-            radius = 130 - ((absCurvature - 5) * 6); // 130 to 70
+            radius = 130 + ((absCurvature - 5) * 6); // 130 to 190
         } else if (absCurvature <= 30) {
-            // Strong curve for 15 to 30
-            radius = 70 - ((absCurvature - 15) * 2); // 70 to 40
+            // Gentle curve for 15 to 30
+            radius = 190 + ((absCurvature - 15) * 2); // 190 to 220
         } else if (absCurvature <= 50) {
-            // Very strong for 30 to 50
-            radius = 40 - ((absCurvature - 30) * 1); // 40 to 20
+            // Very gentle for 30 to 50
+            radius = 220 + ((absCurvature - 30) * 4); // 220 to 300
         } else {
-            // Maximum curve for 50+
-            radius = 20;
+            // Maximum gentle curve for 50+
+            radius = 300;
         }
         
         // Minimum radius

@@ -398,104 +398,92 @@
 {% endblock %}
 
 {% block extra_js %}
-<!-- Professional Arc Text Implementation Based on Real-World Solution -->
+<!-- Professional Arc Text Implementation Based on Demo -->
 <script>
-// Professional Arc Text Controller (like the Angular directive)
-class ArcTextController {
+// Professional Arc Text Controller (based on your demo)
+class SimpleArcText {
     constructor() {
-        this.arc = 0;
-        this.isActive = false;
-        this.timeout = null;
+        this.currentArc = 0;
         this.element = null;
         this.originalText = '';
     }
 
-    // Initialize arc text on element (like Angular's launch function)
-    launch(element, options = {}) {
+    init(element) {
         this.element = element;
         this.originalText = element.textContent;
-        this.arc = parseInt(options.arc || 0);
-        this.isActive = true;
-        
-        console.log(`[ArcText] Launching with arc: ${this.arc}, text: "${this.originalText}"`);
-        this.updateArc();
+        console.log('SimpleArcText initialized with:', this.originalText);
     }
 
-    // Update arc value (like the Angular directive's updateArc)
-    updateArc() {
-        if (!this.isActive || !this.element) return;
-        
-        // Clear previous timeout
-        if (this.timeout) {
-            clearTimeout(this.timeout);
-        }
-        
-        // Debounce updates (like Angular's 250ms timeout)
-        this.timeout = setTimeout(() => {
-            this.generateSVGText();
-        }, 100);
+    setArc(value) {
+        this.currentArc = parseInt(value);
+        console.log('Setting arc to:', this.currentArc);
+        this.updateDisplay();
     }
 
-    // Generate SVG text with arc (like the API call in Angular)
-    generateSVGText() {
-        const fontSize = window.getComputedStyle(this.element).fontSize || '24px';
-        const fontFamily = window.getComputedStyle(this.element).fontFamily || 'Arial';
-        const color = window.getComputedStyle(this.element).color || '#000000';
-        
-        console.log(`[ArcText] Generating SVG: arc=${this.arc}`);
-        
-        if (this.arc === 0) {
-            // No arc - return to normal text
+    updateDisplay() {
+        if (!this.element) return;
+
+        if (this.currentArc === 0) {
+            // No arc - show normal text
             this.element.innerHTML = this.originalText;
             this.element.style.width = 'auto';
             this.element.style.height = 'auto';
-            this.element.style.overflow = 'visible';
             this.element.style.position = 'relative';
             this.element.style.display = 'inline-block';
             return;
         }
+
+        const fontSize = parseInt(window.getComputedStyle(this.element).fontSize) || 32;
+        const fontFamily = window.getComputedStyle(this.element).fontFamily || 'Arial';
+        const color = window.getComputedStyle(this.element).color || '#333333';
+        const letterSpacing = parseFloat(window.getComputedStyle(this.element).letterSpacing) || 0;
         
-        // Fixed container dimensions - NEVER CHANGE
-        const containerWidth = 300;
-        const containerHeight = 100;
-        
-        // Calculate text dimensions for proper centering
+        // Dynamic container sizing based on text properties
         const textLength = this.originalText.length;
-        const estimatedTextWidth = textLength * parseInt(fontSize) * 0.6;
+        const estimatedCharWidth = fontSize * 0.6; // Approximate character width
+        const totalLetterSpacing = letterSpacing * (textLength - 1);
+        const estimatedTextWidth = (textLength * estimatedCharWidth) + totalLetterSpacing;
         
-        // Create arc path with FIXED center point
+        // Calculate dynamic container dimensions
+        const minWidth = 200;
+        const minHeight = 80;
+        const containerWidth = Math.max(minWidth, estimatedTextWidth + 50);
+        const containerHeight = Math.max(minHeight, fontSize * 3);
+        
         const centerX = containerWidth / 2;
         const centerY = containerHeight / 2;
         
-        // Arc calculation - only the curve changes, not position
-        const arcIntensity = Math.abs(this.arc) * 0.5; // Reduced intensity
-        const pathWidth = Math.min(estimatedTextWidth, containerWidth - 20);
-        
+        // Calculate arc path with better proportions
+        const pathWidth = Math.min(estimatedTextWidth, containerWidth - 40);
         const startX = centerX - pathWidth / 2;
         const endX = centerX + pathWidth / 2;
         
+        // Arc intensity - adjusted for container size
+        const arcIntensity = Math.abs(this.currentArc) * 0.8;
+        
         let pathD;
-        if (this.arc > 0) {
-            // Positive arc (down)
+        if (this.currentArc > 0) {
+            // Positive arc (smile - down)
             const curveY = centerY + arcIntensity;
             pathD = `M ${startX} ${centerY} Q ${centerX} ${curveY} ${endX} ${centerY}`;
         } else {
-            // Negative arc (up)
+            // Negative arc (frown - up)
             const curveY = centerY - arcIntensity;
             pathD = `M ${startX} ${centerY} Q ${centerX} ${curveY} ${endX} ${centerY}`;
         }
-        
+
         const pathId = `arcPath_${Date.now()}`;
         
-        // Generate SVG with ABSOLUTE positioning
+        // Create SVG with dynamic dimensions and letter spacing
         const svg = `
             <svg width="${containerWidth}" height="${containerHeight}" 
                  viewBox="0 0 ${containerWidth} ${containerHeight}" 
-                 style="position: absolute; top: 0; left: 0; overflow: visible;">
+                 style="display: block; margin: 0 auto; max-width: 100%; overflow: visible;">
                 <defs>
                     <path id="${pathId}" d="${pathD}" />
                 </defs>
-                <text font-family="${fontFamily}" font-size="${fontSize}" fill="${color}" 
+                <text font-family="${fontFamily}" font-size="${fontSize}px" fill="${color}" 
+                      letter-spacing="${letterSpacing}px"
                       text-anchor="middle" dominant-baseline="central">
                     <textPath href="#${pathId}" startOffset="50%">
                         ${this.originalText}
@@ -504,46 +492,32 @@ class ArcTextController {
             </svg>
         `;
         
-        // Apply with FIXED container styling
+        console.log(`Dynamic SVG: ${containerWidth}x${containerHeight}, fontSize: ${fontSize}px, letterSpacing: ${letterSpacing}px`);
+        
         this.element.innerHTML = svg;
         this.element.style.width = `${containerWidth}px`;
         this.element.style.height = `${containerHeight}px`;
+        this.element.style.margin = '0 auto';
+        this.element.style.maxWidth = '100%';
         this.element.style.position = 'relative';
         this.element.style.display = 'inline-block';
         this.element.style.overflow = 'visible';
-        this.element.style.verticalAlign = 'top'; // Prevent baseline jumping
     }
 
-    // Set arc value (like their mouseDownArc and mouseMoveArc)
-    setArc(value) {
-        // Clamp between -360 and 360 (like their validation)
-        this.arc = Math.max(-360, Math.min(360, parseInt(value)));
-        this.updateArc();
-        return this.arc;
+    setText(text) {
+        this.originalText = text;
+        console.log('Text updated to:', text);
+        this.updateDisplay();
     }
 
-    // Reset arc (like their clickNoArc)
-    resetArc() {
-        return this.setArc(0);
-    }
-
-    // Destroy (cleanup)
-    destroy() {
-        if (this.timeout) {
-            clearTimeout(this.timeout);
-        }
-        if (this.element) {
-            this.element.innerHTML = this.originalText;
-            this.element.style.width = 'auto';
-            this.element.style.height = 'auto';
-            this.element.style.overflow = 'visible';
-        }
-        this.isActive = false;
+    reset() {
+        this.currentArc = 0;
+        this.updateDisplay();
     }
 }
 
-// Global arc text controller instance
-window.arcTextController = new ArcTextController();
+// Global arc text controller instance (like in your demo)
+window.globalArcText = new SimpleArcText();
 
 // Updated Hebrew arch text function using the professional approach
 function createHebrewArchText(element, radius, direction) {
@@ -552,18 +526,20 @@ function createHebrewArchText(element, radius, direction) {
     console.log(`[createHebrewArchText] Called with radius: ${radius}, direction: ${direction}, text: "${text}"`);
     
     if (radius === 0) {
-        window.arcTextController.destroy();
+        window.globalArcText.reset();
         return;
     }
     
     // Convert radius to arc value (like their conversion system)
     const arcValue = radius * direction; // Positive for down, negative for up
     
-    // Launch the arc text controller
-    window.arcTextController.launch(element, {
-        arc: arcValue,
-        text: text
-    });
+    // Initialize if not already done
+    if (!window.globalArcText.element || window.globalArcText.element !== element) {
+        window.globalArcText.init(element);
+    }
+    
+    // Set the arc
+    window.globalArcText.setArc(arcValue);
     
     console.log(`✅ Professional arc text created with arc: ${arcValue}`);
 }

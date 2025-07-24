@@ -388,6 +388,15 @@ select.font-preview-select[data-current-font="Noto Sans Hebrew"] { font-family: 
     user-select: none;
 }
 
+/* Improved text element sizing */
+.design-element.text-element {
+    display: inline-block;    /* יאכלס רק את רוחב התוכן + פדינג */
+    width: auto;
+    height: auto;
+    padding: 8px;             /* תוסיפו כאן את הפדינג הרצוי */
+    box-sizing: content-box;   /* הפדינג לא ייכנס לחישוב ה־width */
+}
+
 .design-element:hover {
     border-color: #007bff;
 }
@@ -449,6 +458,14 @@ select.font-preview-select[data-current-font="Noto Sans Hebrew"] { font-family: 
     border: 1px solid transparent;
     padding: 2px;
     border-radius: 2px;
+}
+
+/* Improved text editable element sizing */
+.js-text-editable {
+    display: inline-block;    
+    width: fit-content;       /* ברוב הדפדפנים המודרניים */
+    height: auto;
+    white-space: nowrap;      /* ימנע כיפוף שורות */
 }
 
 .design-element.text-element span:focus {
