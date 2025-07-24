@@ -531,7 +531,17 @@ function updateUIControlsFromElement(element) {
     }
     
     // Update font size slider to match selected text size
-    const currentFontSize = window.getComputedStyle(textSpan).fontSize;
+    let currentFontSize;
+    
+    // Check if arch is active and use original font size
+    if (textSpan.classList.contains('text-arch') && textSpan.originalFontSize) {
+        currentFontSize = textSpan.originalFontSize;
+        console.log('Using stored original font size for arch text:', currentFontSize);
+    } else {
+        currentFontSize = window.getComputedStyle(textSpan).fontSize;
+        console.log('Using computed font size:', currentFontSize);
+    }
+    
     const fontSizeSlider = document.getElementById('fontSize');
     const fontSizeValue = document.getElementById('fontSizeValue');
     if (fontSizeSlider && fontSizeValue && currentFontSize) {
@@ -684,6 +694,8 @@ function changeColor(color) {
 }
 
 function changeFontSize(size) {
+    console.log('changeFontSize called with size:', size);
+    
     const fontSizeValue = document.getElementById('fontSizeValue');
     if (fontSizeValue) {
         fontSizeValue.textContent = size + 'px';
@@ -693,19 +705,56 @@ function changeFontSize(size) {
     if (selectedElement && selectedElement.classList.contains('text-element')) {
         const textSpan = selectedElement.querySelector('span[contenteditable]');
         if (textSpan) {
+            // Apply font size directly without logging too much
             textSpan.style.fontSize = size + 'px';
+            
+            // Update stored original font size
+            textSpan.originalFontSize = size + 'px';
+            
+            // If arch is active, recreate the arch with throttling
+            const archBtn = document.getElementById('archBtn');
+            if (archBtn && archBtn.classList.contains('active') && textSpan.classList.contains('text-arch')) {
+                // Clear any existing timeout to prevent multiple recreations
+                if (textSpan.fontSizeUpdateTimeout) {
+                    clearTimeout(textSpan.fontSizeUpdateTimeout);
+                }
+                
+                const archSlider = document.getElementById('archCurve');
+                const curvature = archSlider ? parseFloat(archSlider.value) : 0;
+                
+                // Throttle arch recreation to prevent performance issues
+                textSpan.fontSizeUpdateTimeout = setTimeout(() => {
+                    createSimpleArchEffect(textSpan, curvature);
+                }, 100); // Increased timeout for better performance
+            }
         }
     }
     
     // Also update any focused contenteditable element (blue border state)
     const focusedElement = document.activeElement;
     if (focusedElement && focusedElement.hasAttribute('contenteditable')) {
+        console.log('Applying font size to focused element:', size);
         focusedElement.style.fontSize = size + 'px';
         
         // Also select the parent element to make sure it's in the selected state
         const parentElement = focusedElement.closest('.design-element');
         if (parentElement && !parentElement.classList.contains('selected')) {
             selectElement(parentElement);
+        }
+        
+        // If arch is active on focused element, recreate it
+        const parentTextSpan = parentElement ? parentElement.querySelector('span[contenteditable]') : null;
+        if (parentTextSpan && parentTextSpan.classList.contains('text-arch')) {
+            const archBtn = document.getElementById('archBtn');
+            if (archBtn && archBtn.classList.contains('active')) {
+                const archSlider = document.getElementById('archCurve');
+                const curvature = archSlider ? parseFloat(archSlider.value) : 0;
+                console.log('Recreating arch for focused element with new font size');
+                
+                setTimeout(() => {
+                    createSimpleArchEffect(parentTextSpan, curvature);
+                }, 10);
+            }
         }
     }
 }
@@ -800,6 +849,13 @@ function toggleBold() {
 function createSimpleArchEffect(textSpan, curvature) {
     console.log('Creating arch effect with custom curved text, curvature:', curvature);
     
+    // Store original fontSize before any modifications
+    if (!textSpan.originalFontSize) {
+        const computedStyle = window.getComputedStyle(textSpan);
+        textSpan.originalFontSize = computedStyle.fontSize;
+        console.log('Stored original font size:', textSpan.originalFontSize);
+    }
+    
     // Remove any existing arch effect
     if (textSpan.originalText) {
         // Restore original text
@@ -879,29 +935,56 @@ function createSimpleArchEffect(textSpan, curvature) {
 function removeSimpleArchEffect(textSpan) {
     console.log('Removing arch effect with custom cleanup');
     
-    // Restore original text if it exists
-    if (textSpan.originalText) {
+    // Clear any pending timeouts
+    if (textSpan.fontSizeUpdateTimeout) {
+        clearTimeout(textSpan.fontSizeUpdateTimeout);
+        delete textSpan.fontSizeUpdateTimeout;
+    }
+    
+    // Remove arch class
+    textSpan.classList.remove('text-arch');
+    
+    // If there's an SVG container, try to extract text and remove it
+    const svgContainer = textSpan.querySelector('.svg-arch-container, .arch-svg-container');
+    if (svgContainer) {
+        console.log('Found SVG container, removing...');
+        // Try to get text from SVG textPath
+        const textPath = svgContainer.querySelector('textPath');
+        if (textPath && textPath.textContent) {
+            textSpan.textContent = textPath.textContent;
+        }
+        svgContainer.remove();
+    }
+    
+    // Restore original text if it exists and no SVG was found
+    if (textSpan.originalText && !svgContainer) {
         try {
             textSpan.innerHTML = textSpan.originalText;
-            // Reset container styles to original
-            textSpan.style.position = '';
-            textSpan.style.display = '';
-            textSpan.style.height = '';
-            textSpan.style.width = '';
-            textSpan.style.verticalAlign = '';
-            textSpan.style.overflow = '';
-            textSpan.style.textAlign = '';
-            console.log('✅ Original text and styles restored');
+            console.log('✅ Original text restored');
         } catch (error) {
             console.error('❌ Error restoring original text:', error);
         }
     }
     
+    // Reset container styles to original
+    textSpan.style.position = '';
+    textSpan.style.display = '';
+    textSpan.style.height = '';
+    textSpan.style.width = '';
+    textSpan.style.verticalAlign = '';
+    textSpan.style.overflow = '';
+    textSpan.style.textAlign = '';
+    
     // Clear CSS transforms as fallback
     textSpan.style.transform = '';
     textSpan.style.transformOrigin = '';
     
-    console.log('✅ Custom curved text effect removed with full cleanup');
+    // Restore original font size if stored
+    if (textSpan.originalFontSize) {
+        textSpan.style.fontSize = textSpan.originalFontSize;
+    }
+    
+    console.log('✅ Arch effect removed completely');
 }
 
 // Replace complex SVG functions with simple ones
