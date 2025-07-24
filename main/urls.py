@@ -15,6 +15,7 @@ urlpatterns = [
     path('generate-ai-design/', views.generate_ai_design, name='generate_ai_design'),
     path('search-freepik-images/', views.search_freepik_images, name='search_freepik_images'),
     path('download-freepik-image/', views.download_freepik_image, name='download_freepik_image'),
+    path('remove-background/', views.remove_background, name='remove_background'),
     path('ai-conversations/', views.get_ai_conversations, name='get_ai_conversations'),
     path('conversation-history/', views.get_conversation_history, name='get_conversation_history'),
     path('ai-conversation-demo/', views.ai_conversation_demo, name='ai_conversation_demo'),

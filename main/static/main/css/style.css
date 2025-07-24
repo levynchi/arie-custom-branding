@@ -638,21 +638,6 @@ body {
     position: relative;
 }
 
-.delete-btn {
-    position: absolute;
-    top: -10px;
-    right: -10px;
-    width: 20px;
-    height: 20px;
-    background-color: #dc3545;
-    color: white;
-    border: none;
-    border-radius: 50%;
-    cursor: pointer;
-    font-size: 12px;
-    line-height: 1;
-    display: none;
-}
 
 .design-element.selected .delete-btn {
     display: block;

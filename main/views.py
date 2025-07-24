@@ -1342,3 +1342,134 @@ def download_freepik_image(request):
     except Exception as e:
         print(f"❌ Unexpected error in download_freepik_image: {str(e)}")
         return JsonResponse({'error': f'Unexpected error: {str(e)}'}, status=500)
+
+
+@csrf_exempt
+def remove_background(request):
+    """הסרת רקע מתמונה באמצעות rembg"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Only POST method allowed'}, status=405)
+    
+    try:
+        # Parse JSON data
+        data = json.loads(request.body)
+        image_url = data.get('image_url', '').strip()
+        
+        if not image_url:
+            return JsonResponse({'error': 'No image URL provided'}, status=400)
+        
+        print(f"🔍 Processing background removal for: {image_url}")
+        
+        # Import required libraries
+        try:
+            from rembg import remove
+            import numpy as np
+            from PIL import Image, ImageFilter
+            import cv2
+        except ImportError:
+            return JsonResponse({
+                'error': 'Background removal library not installed. Please install rembg: pip install rembg'
+            }, status=500)
+        
+        # Download image
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+        
+        # Handle both local and remote URLs
+        if image_url.startswith(('http://', 'https://')):
+            response = requests.get(image_url, headers=headers, timeout=30)
+            if response.status_code != 200:
+                return JsonResponse({'error': f'Failed to download image: {response.status_code}'}, status=500)
+            image_data = response.content
+        else:
+            # Local file
+            if image_url.startswith('/media/'):
+                image_path = os.path.join(settings.MEDIA_ROOT, image_url.replace('/media/', ''))
+            else:
+                image_path = os.path.join(settings.MEDIA_ROOT, image_url)
+            
+            if not os.path.exists(image_path):
+                return JsonResponse({'error': 'Image file not found'}, status=404)
+            
+            with open(image_path, 'rb') as f:
+                image_data = f.read()
+        
+        # Process image with rembg
+        print("🎨 Removing background...")
+        output_image = remove(image_data)
+        
+        # Convert to PIL Image for further processing
+        from io import BytesIO
+        img = Image.open(BytesIO(output_image))
+        
+        # Apply expand effect (similar to Photoshop's Modify > Expand)
+        print("🔧 Applying expand effect...")
+        
+        # Convert to RGBA if not already
+        if img.mode != 'RGBA':
+            img = img.convert('RGBA')
+        
+        # Get alpha channel (transparency mask)
+        alpha = img.split()[-1]
+        
+        # Apply morphological closing to expand the mask (removes small holes)
+        alpha_array = np.array(alpha)
+        
+        # Create kernel for morphological operations
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+        
+        # Apply closing operation (dilation followed by erosion)
+        # This fills small gaps and expands the mask slightly
+        closed_mask = cv2.morphologyEx(alpha_array, cv2.MORPH_CLOSE, kernel)
+        
+        # Apply slight erosion to clean background pixels
+        eroded_mask = cv2.erode(closed_mask, kernel, iterations=1)
+        
+        # Convert back to PIL Image
+        cleaned_alpha = Image.fromarray(eroded_mask, mode='L')
+        
+        # Apply slight blur to smooth edges
+        cleaned_alpha = cleaned_alpha.filter(ImageFilter.GaussianBlur(radius=0.5))
+        
+        # Combine RGB channels with the cleaned alpha
+        rgb_channels = img.split()[:3]
+        final_img = Image.merge('RGBA', rgb_channels + (cleaned_alpha,))
+        
+        # Save processed image
+        print("💾 Saving processed image...")
+        output_buffer = BytesIO()
+        final_img.save(output_buffer, format='PNG', optimize=True)
+        final_output = output_buffer.getvalue()
+        
+        # Save processed image
+        timestamp = timezone.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"no_bg_{timestamp}.png"
+        
+        media_path = os.path.join(settings.MEDIA_ROOT, 'processed_images')
+        os.makedirs(media_path, exist_ok=True)
+        
+        file_path = os.path.join(media_path, filename)
+        with open(file_path, 'wb') as f:
+            f.write(final_output)
+        
+        # Create URL for the processed image
+        processed_image_url = os.path.join(settings.MEDIA_URL, 'processed_images', filename).replace('\\', '/')
+        
+        print(f"✅ Background removed and cleaned successfully: {filename}")
+        
+        return JsonResponse({
+            'success': True,
+            'processed_image_url': processed_image_url,
+            'original_url': image_url,
+            'filename': filename,
+            'processing_steps': ['background_removal', 'expand', 'smooth_edges']
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON data'}, status=400)
+    except requests.exceptions.Timeout:
+        return JsonResponse({'error': 'Image download timeout'}, status=408)
+    except Exception as e:
+        print(f"❌ Error in remove_background: {str(e)}")
+        return JsonResponse({'error': f'Background removal failed: {str(e)}'}, status=500)

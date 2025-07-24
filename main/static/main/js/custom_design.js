@@ -1612,24 +1612,13 @@ function addImageToCanvas(imageUrl, imageAlt, x, y) {
     const deleteBtn = document.createElement('button');
     deleteBtn.innerHTML = '×';
     deleteBtn.className = 'delete-btn';
-    deleteBtn.style.position = 'absolute';
-    deleteBtn.style.top = '-8px';
-    deleteBtn.style.right = '-8px';
-    deleteBtn.style.width = '20px';
-    deleteBtn.style.height = '20px';
-    deleteBtn.style.background = '#dc3545';
-    deleteBtn.style.color = 'white';
-    deleteBtn.style.border = 'none';
-    deleteBtn.style.borderRadius = '50%';
-    deleteBtn.style.cursor = 'pointer';
-    deleteBtn.style.fontSize = '14px';
-    deleteBtn.style.fontWeight = 'bold';
-    deleteBtn.style.display = 'flex';
-    deleteBtn.style.alignItems = 'center';
-    deleteBtn.style.justifyContent = 'center';
-    deleteBtn.style.zIndex = '20';
-    deleteBtn.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
     deleteBtn.title = 'מחק תמונה';
+    
+    // Remove background button
+    const removeBgBtn = document.createElement('button');
+    removeBgBtn.innerHTML = '<i class="fas fa-magic"></i>';
+    removeBgBtn.className = 'remove-bg-btn';
+    removeBgBtn.title = 'הסר רקע';
     
     // Event listeners
     imageContainer.addEventListener('click', function() {
@@ -1652,6 +1641,11 @@ function addImageToCanvas(imageUrl, imageAlt, x, y) {
         }
     });
     
+    removeBgBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        removeImageBackground(img);
+    });
+    
     // Make draggable
     makeDraggable(imageContainer);
     
@@ -1659,9 +1653,109 @@ function addImageToCanvas(imageUrl, imageAlt, x, y) {
     imageContainer.appendChild(img);
     imageContainer.appendChild(resizeHandle);
     imageContainer.appendChild(deleteBtn);
+    imageContainer.appendChild(removeBgBtn);
     designCanvas.appendChild(imageContainer);
     
     console.log('Image added to canvas:', imageUrl);
+}
+
+// פונקציה להסרת רקע מתמונה
+async function removeImageBackground(imgElement) {
+    // Get the image URL
+    const imageUrl = imgElement.src;
+    
+    if (!imageUrl) {
+        alert('לא ניתן לזהות את התמונה');
+        return;
+    }
+    
+    console.log('Starting background removal for:', imageUrl);
+    
+    // Show loading state
+    const originalSrc = imgElement.src;
+    imgElement.style.opacity = '0.5';
+    
+    // Create loading overlay
+    const loadingOverlay = document.createElement('div');
+    loadingOverlay.style.position = 'absolute';
+    loadingOverlay.style.top = '50%';
+    loadingOverlay.style.left = '50%';
+    loadingOverlay.style.transform = 'translate(-50%, -50%)';
+    loadingOverlay.style.background = 'rgba(0,0,0,0.8)';
+    loadingOverlay.style.color = 'white';
+    loadingOverlay.style.padding = '10px';
+    loadingOverlay.style.borderRadius = '5px';
+    loadingOverlay.style.fontSize = '12px';
+    loadingOverlay.style.zIndex = '30';
+    loadingOverlay.innerHTML = '<i class="fas fa-spinner fa-spin"></i> מסיר רקע...';
+    
+    imgElement.parentElement.appendChild(loadingOverlay);
+    
+    try {
+        const response = await fetch('/remove-background/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                image_url: imageUrl
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success && data.processed_image_url) {
+            // Update the image source with the processed image
+            imgElement.src = data.processed_image_url;
+            imgElement.style.opacity = '1';
+            
+            console.log('✅ Background removed successfully');
+            
+            // Show success notification with processing details
+            const steps = data.processing_steps || ['background_removal'];
+            const stepText = steps.includes('expand') ? 'הרקע הוסר ונוקה בהצלחה!' : 'הרקע הוסר בהצלחה!';
+            showNotification(stepText, 'success');
+        } else {
+            imgElement.style.opacity = '1';
+            alert('שגיאה בהסרת הרקע: ' + (data.error || 'נסה שוב'));
+            console.error('Background removal failed:', data.error);
+        }
+    } catch (error) {
+        console.error('Error removing background:', error);
+        imgElement.style.opacity = '1';
+        alert('שגיאה בתקשורת עם השרת: ' + error.message);
+    } finally {
+        // Remove loading overlay
+        if (loadingOverlay && loadingOverlay.parentElement) {
+            loadingOverlay.remove();
+        }
+    }
+}
+
+// פונקציה להצגת הודעות
+function showNotification(message, type = 'info') {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type === 'success' ? 'success' : 'info'} position-fixed`;
+    notification.style.top = '20px';
+    notification.style.right = '20px';
+    notification.style.zIndex = '9999';
+    notification.style.minWidth = '300px';
+    notification.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : 'info-circle'} me-2"></i>
+        ${message}
+        <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Auto remove after 4 seconds
+    setTimeout(() => {
+        if (notification.parentElement) {
+            notification.remove();
+        }
+    }, 4000);
 }
 
 // פונקציה לעריכת תמונת AI - פותחת חלון דו-שיח לעריכה
@@ -2371,24 +2465,13 @@ function addFreepikImageToCanvas(imageUrl, imageTitle) {
         const deleteBtn = document.createElement('button');
         deleteBtn.innerHTML = '×';
         deleteBtn.className = 'delete-btn';
-        deleteBtn.style.position = 'absolute';
-        deleteBtn.style.top = '-8px';
-        deleteBtn.style.right = '-8px';
-        deleteBtn.style.width = '20px';
-        deleteBtn.style.height = '20px';
-        deleteBtn.style.background = '#dc3545';
-        deleteBtn.style.color = 'white';
-        deleteBtn.style.border = 'none';
-        deleteBtn.style.borderRadius = '50%';
-        deleteBtn.style.cursor = 'pointer';
-        deleteBtn.style.fontSize = '14px';
-        deleteBtn.style.fontWeight = 'bold';
-        deleteBtn.style.display = 'flex';
-        deleteBtn.style.alignItems = 'center';
-        deleteBtn.style.justifyContent = 'center';
-        deleteBtn.style.zIndex = '20';
-        deleteBtn.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
         deleteBtn.title = 'מחק תמונה';
+        
+        // Remove background button
+        const removeBgBtn = document.createElement('button');
+        removeBgBtn.innerHTML = '<i class="fas fa-magic"></i>';
+        removeBgBtn.className = 'remove-bg-btn';
+        removeBgBtn.title = 'הסר רקע';
         
         // Add delete button event
         deleteBtn.addEventListener('click', function(e) {
@@ -2400,6 +2483,13 @@ function addFreepikImageToCanvas(imageUrl, imageTitle) {
                 imageElement.remove();
                 console.log('Image deleted from canvas');
             }
+        });
+        
+        // Add remove background button event
+        removeBgBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            e.preventDefault();
+            removeImageBackground(img);
         });
         
         // Handle image load errors
@@ -2414,6 +2504,7 @@ function addFreepikImageToCanvas(imageUrl, imageTitle) {
         
         imageElement.appendChild(img);
         imageElement.appendChild(deleteBtn);
+        imageElement.appendChild(removeBgBtn);
         
         // Add drag functionality
         imageElement.addEventListener('mousedown', startDrag);
