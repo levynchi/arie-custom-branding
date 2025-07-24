@@ -1451,6 +1451,41 @@ document.addEventListener('DOMContentLoaded', function() {
             changeFontFamily(this.value);
         });
     }
+    
+    // Add drag and drop functionality for Freepik images
+    const designCanvas = document.getElementById('designCanvas');
+    if (designCanvas) {
+        // Prevent default drag behaviors
+        designCanvas.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+            designCanvas.style.border = '2px dashed #007bff';
+        });
+        
+        designCanvas.addEventListener('dragenter', function(e) {
+            e.preventDefault();
+            designCanvas.style.border = '2px dashed #007bff';
+        });
+        
+        designCanvas.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            designCanvas.style.border = '1px solid #ddd';
+        });
+        
+        designCanvas.addEventListener('drop', function(e) {
+            e.preventDefault();
+            designCanvas.style.border = '1px solid #ddd';
+            
+            // Get image data from the dragged element
+            const imageUrl = e.dataTransfer.getData('text/plain');
+            const imageAlt = e.dataTransfer.getData('text/alt');
+            
+            if (imageUrl) {
+                // Create image element on canvas
+                addImageToCanvas(imageUrl, imageAlt, e.offsetX, e.offsetY);
+            }
+        });
+    }
 });
 
 // פונקציות לטיפול בתמונת הסטייל
@@ -1494,6 +1529,132 @@ function removeStyleImage() {
     preview.style.display = 'none';
     
     console.log('Style image removed');
+}
+
+// פונקציה להפיכת אלמנט לגריר
+function makeDraggable(element) {
+    let isDragging = false;
+    let startX, startY, startLeft, startTop;
+    
+    element.addEventListener('mousedown', function(e) {
+        if (e.target.classList.contains('resize-handle') || e.target.tagName === 'BUTTON') {
+            return; // Don't drag when clicking resize handle or button
+        }
+        
+        isDragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        startLeft = parseInt(window.getComputedStyle(element).left);
+        startTop = parseInt(window.getComputedStyle(element).top);
+        
+        element.style.zIndex = '100';
+        
+        e.preventDefault();
+    });
+    
+    document.addEventListener('mousemove', function(e) {
+        if (!isDragging) return;
+        
+        const deltaX = e.clientX - startX;
+        const deltaY = e.clientY - startY;
+        
+        element.style.left = (startLeft + deltaX) + 'px';
+        element.style.top = (startTop + deltaY) + 'px';
+    });
+    
+    document.addEventListener('mouseup', function() {
+        if (isDragging) {
+            isDragging = false;
+            element.style.zIndex = '10';
+        }
+    });
+}
+
+// פונקציה להוספת תמונה לקנבס
+function addImageToCanvas(imageUrl, imageAlt, x, y) {
+    const designCanvas = document.getElementById('designCanvas');
+    if (!designCanvas) return;
+    
+    // Create image container
+    const imageContainer = document.createElement('div');
+    imageContainer.className = 'design-image draggable-element';
+    imageContainer.style.position = 'absolute';
+    imageContainer.style.left = x + 'px';
+    imageContainer.style.top = y + 'px';
+    imageContainer.style.cursor = 'move';
+    imageContainer.style.border = '2px solid transparent';
+    imageContainer.style.borderRadius = '4px';
+    imageContainer.style.zIndex = '10';
+    
+    // Create image element
+    const img = document.createElement('img');
+    img.src = imageUrl;
+    img.alt = imageAlt || 'Freepik Image';
+    img.style.maxWidth = '200px';
+    img.style.maxHeight = '200px';
+    img.style.width = 'auto';
+    img.style.height = 'auto';
+    img.style.display = 'block';
+    
+    // Add resize handles
+    const resizeHandle = document.createElement('div');
+    resizeHandle.className = 'resize-handle';
+    resizeHandle.style.position = 'absolute';
+    resizeHandle.style.bottom = '0';
+    resizeHandle.style.right = '0';
+    resizeHandle.style.width = '10px';
+    resizeHandle.style.height = '10px';
+    resizeHandle.style.background = '#007bff';
+    resizeHandle.style.cursor = 'se-resize';
+    resizeHandle.style.display = 'none';
+    
+    // Delete button
+    const deleteBtn = document.createElement('button');
+    deleteBtn.innerHTML = '×';
+    deleteBtn.style.position = 'absolute';
+    deleteBtn.style.top = '-10px';
+    deleteBtn.style.right = '-10px';
+    deleteBtn.style.width = '20px';
+    deleteBtn.style.height = '20px';
+    deleteBtn.style.background = '#dc3545';
+    deleteBtn.style.color = 'white';
+    deleteBtn.style.border = 'none';
+    deleteBtn.style.borderRadius = '50%';
+    deleteBtn.style.cursor = 'pointer';
+    deleteBtn.style.fontSize = '12px';
+    deleteBtn.style.display = 'none';
+    deleteBtn.style.zIndex = '11';
+    
+    // Event listeners
+    imageContainer.addEventListener('click', function() {
+        // Remove selection from other elements
+        document.querySelectorAll('.design-image').forEach(el => {
+            el.style.border = '2px solid transparent';
+            el.querySelector('.resize-handle').style.display = 'none';
+            el.querySelector('button').style.display = 'none';
+        });
+        
+        // Select this element
+        this.style.border = '2px solid #007bff';
+        resizeHandle.style.display = 'block';
+        deleteBtn.style.display = 'block';
+    });
+    
+    deleteBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        imageContainer.remove();
+    });
+    
+    // Make draggable
+    makeDraggable(imageContainer);
+    
+    // Append elements
+    imageContainer.appendChild(img);
+    imageContainer.appendChild(resizeHandle);
+    imageContainer.appendChild(deleteBtn);
+    designCanvas.appendChild(imageContainer);
+    
+    console.log('Image added to canvas:', imageUrl);
 }
 
 // פונקציה לעריכת תמונת AI - פותחת חלון דו-שיח לעריכה
@@ -2051,7 +2212,12 @@ function displayFreepikResults(results) {
         }
         
         html += `
-            <div class="freepik-result-item position-relative" onclick="selectFreepikImage('${image.id}', '${image.preview}', '${image.title}')">
+            <div class="freepik-result-item position-relative" 
+                 draggable="true" 
+                 data-image-id="${image.id}" 
+                 data-image-url="${image.preview}" 
+                 data-image-title="${image.title}"
+                 onclick="selectFreepikImage('${image.id}', '${image.preview}', '${image.title}')">
                 ${badges}
                 <img src="${image.thumbnail || image.preview}" 
                      alt="${image.title}" 
@@ -2065,6 +2231,28 @@ function displayFreepikResults(results) {
     
     resultsContainer.innerHTML = html;
     resultsContainer.style.display = 'block';
+    
+    // Add drag event listeners to all result items
+    const resultItems = resultsContainer.querySelectorAll('.freepik-result-item');
+    resultItems.forEach(item => {
+        item.addEventListener('dragstart', function(e) {
+            const imageUrl = this.dataset.imageUrl;
+            const imageTitle = this.dataset.imageTitle;
+            
+            // Set the data to transfer
+            e.dataTransfer.setData('text/plain', imageUrl);
+            e.dataTransfer.setData('text/alt', imageTitle);
+            e.dataTransfer.effectAllowed = 'copy';
+            
+            // Add visual feedback
+            this.style.opacity = '0.5';
+        });
+        
+        item.addEventListener('dragend', function(e) {
+            // Remove visual feedback
+            this.style.opacity = '1';
+        });
+    });
     
     // Make sure the search results area is visible
     if (searchResultsArea) {
