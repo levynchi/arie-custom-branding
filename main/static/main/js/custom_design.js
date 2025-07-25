@@ -2,6 +2,30 @@
 
 console.log('custom_design.js loaded successfully');
 
+// Debug AI elements on page load
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🔍 Debugging AI elements on page load:');
+    const aiElements = document.querySelectorAll('.ai-generated');
+    console.log('📊 Found', aiElements.length, 'AI elements');
+    
+    aiElements.forEach((element, index) => {
+        console.log(`  ${index + 1}. Element ID:`, element.id, 'Classes:', element.className);
+        console.log('     Has selected?', element.classList.contains('selected'));
+        console.log('     Has creating?', element.classList.contains('creating'));
+        console.log('     Element background:', window.getComputedStyle(element).backgroundColor);
+        console.log('     Element border:', window.getComputedStyle(element).border);
+        console.log('     Should show logo?', 
+            element.classList.contains('selected') || element.classList.contains('creating'));
+            
+        // Check image inside
+        const img = element.querySelector('img');
+        if (img) {
+            console.log('     Image src:', img.src);
+            console.log('     Image background:', window.getComputedStyle(img).backgroundColor);
+        }
+    });
+});
+
 // Global variables
 let selectedElement = null;
 let elementCounter = 0;
@@ -307,19 +331,8 @@ function addImage(event) {
     if (file) {
         const reader = new FileReader();
         reader.onload = function(e) {
-            const canvas = document.getElementById('designCanvas');
-            const imageElement = document.createElement('div');
-            imageElement.className = 'design-element';
-            imageElement.id = 'element_' + (++elementCounter);
-            imageElement.innerHTML = `
-                <img src="${e.target.result}" class="image-element js-image-small">
-                <button class="delete-btn" onclick="deleteElement('${imageElement.id}')">&times;</button>
-            `;
-            imageElement.style.left = '100px';
-            imageElement.style.top = '100px';
-            
-            canvas.appendChild(imageElement);
-            makeElementInteractive(imageElement);
+            // Use the addImageToCanvas function which includes remove background button
+            addImageToCanvas(e.target.result, file.name, 100, 100);
         };
         reader.readAsDataURL(file);
     }
@@ -360,8 +373,13 @@ function toggleEmojiPicker() {
 function makeElementInteractive(element) {
     element.addEventListener('mousedown', startDrag);
     element.addEventListener('click', function(e) {
-        console.log('Element clicked, calling selectElement');
-        selectElement(e);
+        console.log('🖱️ Element clicked:', element.id);
+        console.log('🎯 Element classes:', element.className);
+        console.log('🤖 Is AI generated?', element.classList.contains('ai-generated'));
+        
+        e.stopPropagation(); // Prevent canvas click event
+        selectElement(element); // Pass element, not event
+        
         // If it's a text element, also update UI controls
         if (element.classList.contains('text-element')) {
             updateUIControlsFromElement(element);
@@ -419,9 +437,11 @@ function startDrag(e) {
     if (e.target.classList.contains('delete-btn')) return;
     if (e.target.hasAttribute('contenteditable')) return;
     
+    console.log('🖱️ StartDrag called for element:', e.currentTarget.id);
+    
     isDragging = true;
     selectedElement = e.currentTarget;
-    selectElement(e);
+    selectElement(e.currentTarget); // Pass element, not event
     
     const rect = selectedElement.getBoundingClientRect();
     const canvasRect = document.getElementById('designCanvas').getBoundingClientRect();
@@ -478,17 +498,37 @@ function selectElement(elementOrEvent) {
         console.warn('selectElement: Invalid element provided');
         return;
     }
+    console.log('🎯 selectElement called for:', element);
+    console.log('🔍 Element classes before:', element.className);
+    console.log('🎨 Is AI generated?', element.classList.contains('ai-generated'));
     
     // Remove previous selection
     document.querySelectorAll('.design-element').forEach(el => {
         if (el.classList) {
+            console.log('🚫 Removing selected from:', el.id, 'Classes:', el.className);
+            console.log('   Background before:', window.getComputedStyle(el).backgroundColor);
+            
+            const wasAIGenerated = el.classList.contains('ai-generated');
             el.classList.remove('selected');
+            
+            console.log('   Background after:', window.getComputedStyle(el).backgroundColor);
+            console.log('   Border after:', window.getComputedStyle(el).border);
+            
+            if (wasAIGenerated) {
+                console.log('   🤖 AI Element - should have transparent border now');
+                console.log('   🔍 Computed border-color:', window.getComputedStyle(el).borderColor);
+                console.log('   🔍 Computed border-style:', window.getComputedStyle(el).borderStyle);
+            }
         }
     });
     
     // Add selection to current element
     element.classList.add('selected');
     selectedElement = element;
+    console.log('✅ Element selected:', element.id, 'New classes:', element.className);
+    console.log('🔍 Background after selecting:', window.getComputedStyle(element).backgroundColor);
+    console.log('🔍 Border after selecting:', window.getComputedStyle(element).border);
+    console.log('🏷️ AI logo should appear:', element.classList.contains('ai-generated') && element.classList.contains('selected'));
     
     // Update UI controls if it's a text element
     updateUIControlsFromElement(element);
@@ -1243,11 +1283,17 @@ async function generateAIDesign() {
             // Add the generated image to the canvas
             const canvas = document.getElementById('designCanvas');
             const imageElement = document.createElement('div');
-            imageElement.className = 'design-element ai-generated';
+            imageElement.className = 'design-element ai-generated creating';
             imageElement.id = 'element_' + (++elementCounter);
+            
+            console.log('🎨 Creating new AI element with ID:', imageElement.id);
+            console.log('🏷️ Initial classes:', imageElement.className);
+            console.log('✨ Should show AI logo (has creating class)');
+            
             imageElement.innerHTML = `
                 <img src="${data.image_url}" class="image-element js-image-medium">
                 <button class="delete-btn" onclick="deleteElement('${imageElement.id}')">&times;</button>
+                <button class="remove-bg-btn" title="הסר רקע" onclick="removeImageBackground(this.parentElement.querySelector('img'))"><i class="fas fa-magic"></i></button>
                 <button class="edit-image-btn" onclick="editAIImage('${data.image_url}')" title="ערוך תמונה זו">
                     <i class="fas fa-edit"></i>
                 </button>
@@ -1255,8 +1301,43 @@ async function generateAIDesign() {
             imageElement.style.left = '100px';
             imageElement.style.top = '100px';
             
+            console.log('🤖 Adding AI generated element to canvas');
+            console.log('🎨 Element ID:', imageElement.id);
+            console.log('🏷️ Element classes:', imageElement.className);
+            console.log('📍 Element position:', imageElement.style.left, imageElement.style.top);
+            
             canvas.appendChild(imageElement);
             makeElementInteractive(imageElement);
+            
+            console.log('✨ AI element added with "creating" class - logo should appear');
+            console.log('🔍 Element background after adding:', window.getComputedStyle(imageElement).backgroundColor);
+            console.log('🔍 Element border after adding:', window.getComputedStyle(imageElement).border);
+            
+            // Check image background
+            const img = imageElement.querySelector('img');
+            if (img) {
+                console.log('🖼️ Image background:', window.getComputedStyle(img).backgroundColor);
+                console.log('🖼️ Image source:', img.src);
+            }
+            
+            // Remove 'creating' class after 2 seconds to hide the AI logo
+            setTimeout(() => {
+                console.log('⏰ Removing "creating" class from AI element after 2 seconds');
+                console.log('🔍 Classes before removing creating:', imageElement.className);
+                console.log('🔍 Background before removing creating:', window.getComputedStyle(imageElement).backgroundColor);
+                imageElement.classList.remove('creating');
+                console.log('🔍 Classes after removing creating:', imageElement.className);
+                console.log('🔍 Background after removing creating:', window.getComputedStyle(imageElement).backgroundColor);
+                console.log('🔍 Border after removing creating:', window.getComputedStyle(imageElement).border);
+                console.log('🏷️ AI logo should now hide (unless selected)');
+                
+                // Check if background is truly transparent
+                const bgColor = window.getComputedStyle(imageElement).backgroundColor;
+                console.log('🎯 Final background color:', bgColor);
+                if (bgColor !== 'rgba(0, 0, 0, 0)' && bgColor !== 'transparent') {
+                    console.warn('⚠️ Element still has background color:', bgColor);
+                }
+            }, 2000);
             
             // Clear prompt
             if (promptInput) promptInput.value = '';
@@ -1356,11 +1437,28 @@ document.addEventListener('DOMContentLoaded', function() {
     const canvas = document.getElementById('designCanvas');
     if (canvas) {
         canvas.addEventListener('click', function(e) {
+            console.log('🖱️ Canvas clicked! Target:', e.target, 'Canvas:', this);
+            console.log('🎯 Click target === canvas?', e.target === this);
+            
             if (e.target === this) {
+                console.log('📋 Clicking on empty canvas - deselecting all elements');
+                console.log('🔍 Elements before deselection:');
+                
                 document.querySelectorAll('.design-element').forEach(el => {
+                    console.log('  - Element:', el.id, 'Classes before:', el.className);
+                    console.log('  - Has selected?', el.classList.contains('selected'));
+                    console.log('  - Is AI generated?', el.classList.contains('ai-generated'));
+                    
                     el.classList.remove('selected');
+                    
+                    console.log('  - Classes after:', el.className);
+                    console.log('  - AI logo should hide:', el.classList.contains('ai-generated') && !el.classList.contains('selected'));
                 });
+                
                 selectedElement = null;
+                console.log('✅ All elements deselected, selectedElement set to null');
+            } else {
+                console.log('🎯 Click was on element, not canvas background');
             }
         });
     }
@@ -1664,12 +1762,26 @@ async function removeImageBackground(imgElement) {
     // Get the image URL
     const imageUrl = imgElement.src;
     
+    console.log('🔍 DEBUG: removeImageBackground called');
+    console.log('🔍 DEBUG: imgElement:', imgElement);
+    console.log('🔍 DEBUG: imageUrl:', imageUrl);
+    console.log('🔍 DEBUG: imgElement.parentElement:', imgElement.parentElement);
+    
     if (!imageUrl) {
+        console.error('❌ DEBUG: No image URL found');
         alert('לא ניתן לזהות את התמונה');
         return;
     }
     
-    console.log('Starting background removal for:', imageUrl);
+    // Check if this is a data URL (uploaded image) vs regular URL
+    const isDataUrl = imageUrl.startsWith('data:');
+    console.log('🔍 DEBUG: Is data URL (uploaded image):', isDataUrl);
+    
+    if (isDataUrl) {
+        console.log('⚠️ DEBUG: This is an uploaded image (data URL), may need special handling');
+    }
+    
+    console.log('Starting background removal for:', imageUrl.substring(0, 100) + '...');
     
     // Show loading state
     const originalSrc = imgElement.src;
@@ -1692,6 +1804,11 @@ async function removeImageBackground(imgElement) {
     imgElement.parentElement.appendChild(loadingOverlay);
     
     try {
+        console.log('🔍 DEBUG: Sending request to /remove-background/');
+        console.log('🔍 DEBUG: Request body:', JSON.stringify({
+            image_url: imageUrl.substring(0, 100) + (imageUrl.length > 100 ? '...' : '')
+        }));
+        
         const response = await fetch('/remove-background/', {
             method: 'POST',
             headers: {
@@ -1703,9 +1820,20 @@ async function removeImageBackground(imgElement) {
             })
         });
         
+        console.log('🔍 DEBUG: Response status:', response.status);
+        console.log('🔍 DEBUG: Response ok:', response.ok);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ DEBUG: Server error response:', errorText);
+            throw new Error(`Server responded with status ${response.status}: ${errorText}`);
+        }
+        
         const data = await response.json();
+        console.log('🔍 DEBUG: Response data:', data);
         
         if (data.success && data.processed_image_url) {
+            console.log('✅ DEBUG: Success! New image URL:', data.processed_image_url);
             // Update the image source with the processed image
             imgElement.src = data.processed_image_url;
             imgElement.style.opacity = '1';
@@ -1717,12 +1845,14 @@ async function removeImageBackground(imgElement) {
             const stepText = steps.includes('expand') ? 'הרקע הוסר ונוקה בהצלחה!' : 'הרקע הוסר בהצלחה!';
             showNotification(stepText, 'success');
         } else {
+            console.error('❌ DEBUG: Server returned success=false:', data);
             imgElement.style.opacity = '1';
             alert('שגיאה בהסרת הרקע: ' + (data.error || 'נסה שוב'));
             console.error('Background removal failed:', data.error);
         }
     } catch (error) {
-        console.error('Error removing background:', error);
+        console.error('❌ DEBUG: Fetch error:', error);
+        console.error('❌ DEBUG: Error stack:', error.stack);
         imgElement.style.opacity = '1';
         alert('שגיאה בתקשורת עם השרת: ' + error.message);
     } finally {
@@ -1832,14 +1962,14 @@ async function generateAIImageEdit(prompt, baseImageUrl) {
             // Add the edited image to the canvas
             const canvas = document.getElementById('designCanvas');
             const imageElement = document.createElement('div');
-            imageElement.className = 'design-element ai-generated ai-edited';
+            imageElement.className = 'design-element ai-generated ai-edited creating';
             imageElement.id = 'element_' + (++elementCounter);
             imageElement.innerHTML = `
                 <img src="${data.image_url}" class="image-element js-image-medium">
                 <button class="delete-btn" onclick="deleteElement('${imageElement.id}')">&times;</button>
+                <button class="remove-bg-btn" title="הסר רקע" onclick="removeImageBackground(this.parentElement.querySelector('img'))"><i class="fas fa-magic"></i></button>
                 <button class="edit-image-btn" onclick="editAIImage('${data.image_url}')" title="ערוך תמונה זו">
                     <i class="fas fa-edit"></i>
-                </button>
             `;
             imageElement.style.left = '120px'; // מקום מעט שונה מהמקור
             imageElement.style.top = '120px';
@@ -1848,6 +1978,11 @@ async function generateAIImageEdit(prompt, baseImageUrl) {
             
             // Make it draggable
             makeElementInteractive(imageElement);
+            
+            // Remove 'creating' class after 2 seconds to hide the AI logo
+            setTimeout(() => {
+                imageElement.classList.remove('creating');
+            }, 2000);
             
             // Clear prompts
             const promptInput = document.getElementById('promptInput');

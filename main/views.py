@@ -1376,24 +1376,41 @@ def remove_background(request):
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         }
         
-        # Handle both local and remote URLs
-        if image_url.startswith(('http://', 'https://')):
+        # Handle both local and remote URLs, and data URLs
+        if image_url.startswith('data:'):
+            # Handle data URL (base64 encoded image)
+            print("🔍 Processing data URL (uploaded image)")
+            try:
+                # Extract the base64 data
+                header, base64_data = image_url.split(',', 1)
+                image_data = base64.b64decode(base64_data)
+                print(f"✅ Successfully decoded data URL, size: {len(image_data)} bytes")
+            except Exception as e:
+                print(f"❌ Failed to decode data URL: {str(e)}")
+                return JsonResponse({'error': f'Failed to decode uploaded image: {str(e)}'}, status=400)
+        elif image_url.startswith(('http://', 'https://')):
+            # Remote URL
+            print("🔍 Processing remote URL")
             response = requests.get(image_url, headers=headers, timeout=30)
             if response.status_code != 200:
                 return JsonResponse({'error': f'Failed to download image: {response.status_code}'}, status=500)
             image_data = response.content
+            print(f"✅ Downloaded remote image, size: {len(image_data)} bytes")
         else:
             # Local file
+            print("🔍 Processing local file")
             if image_url.startswith('/media/'):
                 image_path = os.path.join(settings.MEDIA_ROOT, image_url.replace('/media/', ''))
             else:
                 image_path = os.path.join(settings.MEDIA_ROOT, image_url)
             
             if not os.path.exists(image_path):
+                print(f"❌ Image file not found: {image_path}")
                 return JsonResponse({'error': 'Image file not found'}, status=404)
             
             with open(image_path, 'rb') as f:
                 image_data = f.read()
+            print(f"✅ Read local file, size: {len(image_data)} bytes")
         
         # Process image with rembg
         print("🎨 Removing background...")

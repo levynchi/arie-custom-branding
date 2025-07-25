@@ -545,16 +545,22 @@ body {
     background-color: rgba(0, 123, 255, 0.1);
 }
 
+/* Ensure AI elements without selected class have transparent border */
+.design-element.ai-generated:not(.selected) {
+    border: 2px dashed transparent !important;
+    background: transparent !important;
+}
+
 .design-element.dragging {
     opacity: 0.7;
     z-index: 1000;
 }
 
-.text-element {
+/* .text-element {
     padding: 5px;
     background-color: rgba(255, 255, 255, 0.9);
     border-radius: 3px;
-}
+} */
 
 .text-element span[contenteditable] {
     outline: none;
@@ -1433,20 +1439,29 @@ body {
 
 /* AI Generated Design Elements */
 .ai-generated {
+    /* Basic styling for AI elements - no border by default */
+    position: relative;
+}
+
+/* AI elements show border only when selected */
+.ai-generated.selected {
     border: 2px solid #667eea;
     border-radius: 8px;
 }
 
-.ai-generated .image-element {
-    border-radius: 6px;
-    box-shadow: 0 2px 10px rgba(102, 126, 234, 0.2);
+
+/* Hide AI logo by default - only show when selected or creating */
+.ai-generated::before {
+    display: none;
 }
 
-.ai-generated::before {
+/* AI logo appears only when element is selected or during creation */
+.ai-generated.selected::before,
+.ai-generated.creating::before {
     content: "AI";
     position: absolute;
-    top: -8px;
-    left: -8px;
+    top: -12px;
+    left: -12px;
     background: linear-gradient(45deg, #667eea, #764ba2);
     color: white;
     padding: 2px 6px;
@@ -1454,6 +1469,19 @@ body {
     font-size: 10px;
     font-weight: bold;
     z-index: 1000;
+    animation: aiLogoAppear 0.3s ease-in-out;
+    display: block;
+}
+
+@keyframes aiLogoAppear {
+    0% {
+        opacity: 0;
+        transform: scale(0.5);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
 }
 
 /* Responsive Design */
