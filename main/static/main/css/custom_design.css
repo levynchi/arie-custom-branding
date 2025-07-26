@@ -441,12 +441,91 @@ select.font-preview-select[data-current-font="Noto Sans Hebrew"] { font-family: 
     transform: scale(1.1);
 }
 
-.design-element:hover .delete-btn,
-.design-element:hover .edit-image-btn,
-.design-element:hover .remove-bg-btn {
+/* Hide action buttons by default */
+.design-element .delete-btn,
+.design-element .edit-image-btn,
+.design-element .remove-bg-btn,
+.design-image .delete-btn,
+.design-image .remove-bg-btn,
+.design-image .resize-handle,
+.draggable-element .delete-btn,
+.draggable-element .remove-bg-btn {
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+}
+
+/* Show action buttons only when element is selected */
+.design-element.selected .delete-btn,
+.design-element.selected .edit-image-btn,
+.design-element.selected .remove-bg-btn,
+.design-image.selected .delete-btn,
+.design-image.selected .remove-bg-btn,
+.design-image.selected .resize-handle,
+.draggable-element.selected .delete-btn,
+.draggable-element.selected .remove-bg-btn {
     display: flex !important;
     opacity: 1 !important;
     visibility: visible !important;
+}
+
+/* Force hide action buttons when NOT selected - stronger rule */
+.design-element:not(.selected) .delete-btn,
+.design-element:not(.selected) .edit-image-btn,
+.design-element:not(.selected) .remove-bg-btn,
+.design-image:not(.selected) .delete-btn,
+.design-image:not(.selected) .remove-bg-btn,
+.design-image:not(.selected) .resize-handle,
+.draggable-element:not(.selected) .delete-btn,
+.draggable-element:not(.selected) .remove-bg-btn {
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+}
+
+/* Ensure buttons stay hidden on hover if element not selected */
+.design-element:not(.selected):hover .delete-btn,
+.design-element:not(.selected):hover .edit-image-btn,
+.design-element:not(.selected):hover .remove-bg-btn,
+.design-image:not(.selected):hover .delete-btn,
+.design-image:not(.selected):hover .remove-bg-btn,
+.design-image:not(.selected):hover .resize-handle,
+.draggable-element:not(.selected):hover .delete-btn,
+.draggable-element:not(.selected):hover .remove-bg-btn {
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+}
+
+/* Additional specific rule for resize handles */
+.resize-handle {
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+}
+
+.design-element.selected .resize-handle,
+.design-image.selected .resize-handle,
+.selected .resize-handle,
+.draggable-element.selected .resize-handle {
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+/* Hide contenteditable borders when not focused */
+.design-element:not(.selected) span[contenteditable] {
+    border: none !important;
+    outline: none !important;
+    background: transparent !important;
+}
+
+/* Clean appearance for non-selected elements */
+.design-element:not(.selected),
+.design-image:not(.selected) {
+    border: 2px solid transparent !important;
+    background: transparent !important;
+    box-shadow: none !important;
 }
 
 .design-element.text-element span {
@@ -1246,14 +1325,14 @@ select.font-preview-select[data-current-font="Noto Sans Hebrew"] { font-family: 
     cursor: pointer !important;
     font-size: 10px !important;
     font-weight: bold !important;
-    display: flex !important;
+    display: none !important; /* Hidden by default */
     align-items: center !important;
     justify-content: center !important;
     z-index: 999 !important;
     box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
     transition: all 0.2s ease !important;
-    opacity: 1 !important;
-    visibility: visible !important;
+    opacity: 0 !important; /* Hidden by default */
+    visibility: hidden !important; /* Hidden by default */
     pointer-events: auto !important;
 }
 
@@ -1280,15 +1359,16 @@ select.font-preview-select[data-current-font="Noto Sans Hebrew"] { font-family: 
     border: none !important;
     border-radius: 50% !important;
     cursor: pointer !important;
-    font-size: 10px !important;
-    display: flex !important;
+    font-size: 8px !important;
+    font-weight: bold !important;
+    display: none !important; /* Hidden by default */
     align-items: center !important;
     justify-content: center !important;
     z-index: 999 !important;
     box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
     transition: all 0.2s ease !important;
-    opacity: 1 !important;
-    visibility: visible !important;
+    opacity: 0 !important; /* Hidden by default */
+    visibility: hidden !important; /* Hidden by default */
     pointer-events: auto !important;
     font-family: "Font Awesome 6 Free" !important;
     font-weight: 900 !important;
@@ -1307,65 +1387,34 @@ select.font-preview-select[data-current-font="Noto Sans Hebrew"] { font-family: 
     line-height: 1 !important;
 }
 
-/* Force remove-bg button to always be visible with maximum specificity */
-div.design-element .remove-bg-btn,
-div.design-image .remove-bg-btn,
-.design-canvas .design-element .remove-bg-btn,
-.design-canvas .design-image .remove-bg-btn {
+/* STRONGEST RULE: Force hide remove-bg-btn when parent is not selected */
+.design-element:not(.selected) .remove-bg-btn,
+.design-image:not(.selected) .remove-bg-btn,
+.draggable-element:not(.selected) .remove-bg-btn {
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
+/* STRONGEST RULE: Show remove-bg-btn only when parent is selected */
+.design-element.selected .remove-bg-btn,
+.design-image.selected .remove-bg-btn,
+.draggable-element.selected .remove-bg-btn {
     display: flex !important;
-    visibility: visible !important;
     opacity: 1 !important;
-    z-index: 999 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
 }
 
 .remove-bg-btn:hover {
     background: #218838 !important;
     transform: scale(1.1) !important;
-    opacity: 1 !important;
     box-shadow: 0 4px 8px rgba(0,0,0,0.3) !important;
+    /* Only show on hover if element is selected */
+    opacity: inherit !important;
 }
 
 .remove-bg-btn:active {
     transform: scale(0.95) !important;
-}
-
-/* Super specific remove-bg button override to prevent any overriding */
-.design-canvas .design-element .remove-bg-btn,
-.design-canvas .design-image .remove-bg-btn,
-div.design-canvas div.design-element .remove-bg-btn,
-div.design-canvas div.design-image .remove-bg-btn,
-.canvas-container .design-element .remove-bg-btn,
-.canvas-container .design-image .remove-bg-btn {
-    position: absolute !important;
-    top: 0px !important;
-    left: 0px !important;
-    width: 22px !important;
-    height: 22px !important;
-    background: #28a745 !important;
-    color: white !important;
-    border: none !important;
-    border-radius: 50% !important;
-    cursor: pointer !important;
-    font-size: 10px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    z-index: 999 !important;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
-    transition: all 0.2s ease !important;
-    opacity: 1 !important;
-    visibility: visible !important;
-    pointer-events: auto !important;
-    font-family: "Font Awesome 6 Free" !important;
-    font-weight: 900 !important;
-}
-
-/* Show buttons on image hover */
-.design-image:hover .delete-btn,
-.design-image:hover .remove-bg-btn,
-.design-element:hover .delete-btn,
-.design-element:hover .remove-bg-btn {
-    opacity: 1 !important;
-    visibility: visible !important;
-    display: flex !important;
 }

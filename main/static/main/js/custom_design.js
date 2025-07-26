@@ -503,7 +503,7 @@ function selectElement(elementOrEvent) {
     console.log('🎨 Is AI generated?', element.classList.contains('ai-generated'));
     
     // Remove previous selection
-    document.querySelectorAll('.design-element').forEach(el => {
+    document.querySelectorAll('.design-element, .design-image').forEach(el => {
         if (el.classList) {
             console.log('🚫 Removing selected from:', el.id, 'Classes:', el.className);
             console.log('   Background before:', window.getComputedStyle(el).backgroundColor);
@@ -1444,7 +1444,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('📋 Clicking on empty canvas - deselecting all elements');
                 console.log('🔍 Elements before deselection:');
                 
-                document.querySelectorAll('.design-element').forEach(el => {
+                document.querySelectorAll('.design-element, .design-image').forEach(el => {
                     console.log('  - Element:', el.id, 'Classes before:', el.className);
                     console.log('  - Has selected?', el.classList.contains('selected'));
                     console.log('  - Is AI generated?', el.classList.contains('ai-generated'));
@@ -1675,7 +1675,7 @@ function addImageToCanvas(imageUrl, imageAlt, x, y) {
     
     // Create image container
     const imageContainer = document.createElement('div');
-    imageContainer.className = 'design-image draggable-element';
+    imageContainer.className = 'design-element design-image';
     imageContainer.style.position = 'absolute';
     imageContainer.style.left = x + 'px';
     imageContainer.style.top = y + 'px';
@@ -1721,13 +1721,15 @@ function addImageToCanvas(imageUrl, imageAlt, x, y) {
     // Event listeners
     imageContainer.addEventListener('click', function() {
         // Remove selection from other elements
-        document.querySelectorAll('.design-image').forEach(el => {
+        document.querySelectorAll('.design-image, .design-element').forEach(el => {
+            el.classList.remove('selected');
             el.style.border = '2px solid transparent';
             const resizeHandle = el.querySelector('.resize-handle');
             if (resizeHandle) resizeHandle.style.display = 'none';
         });
         
         // Select this element
+        this.classList.add('selected');
         this.style.border = '2px solid #007bff';
         resizeHandle.style.display = 'block';
     });
