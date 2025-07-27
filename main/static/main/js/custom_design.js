@@ -2555,6 +2555,13 @@ function selectFreepikImage(imageId, imageUrl, imageTitle) {
             resultsContainer.style.display = 'none';
             document.getElementById('imageSourceIndicator').style.display = 'none';
             document.getElementById('freepikSearchInput').value = '';
+            
+            // Hide the entire search results area
+            const searchResultsArea = document.getElementById('searchResultsArea');
+            if (searchResultsArea) {
+                searchResultsArea.style.display = 'none';
+                console.log('🫥 Hidden searchResultsArea after image selection');
+            }
         } else {
             alert('שגיאה בהורדת התמונה: ' + (data.error || 'נסה שוב'));
         }
