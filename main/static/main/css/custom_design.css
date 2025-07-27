@@ -1625,14 +1625,106 @@ select.font-preview-select[data-current-font="Noto Sans Hebrew"] { font-family: 
 }
 
 /* Layer dragging styles */
-.layer-item.dragging {
+.layer-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 12px;
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    user-select: none;
+}
+
+.layer-item[draggable="true"] {
+    cursor: grab;
+}
+
+.layer-item[draggable="true"]:active {
+    cursor: grabbing;
+}
+
+.layer-item:hover {
+    background: #e9ecef;
+    border-color: #007bff;
+    transform: translateX(3px);
+}
+
+.layer-item.selected {
+    background: #d1ecf1;
+    border-color: #007bff;
+    box-shadow: 0 2px 8px rgba(0,123,255,0.2);
+}
+
+.layer-item.hidden {
     opacity: 0.5;
-    transform: rotate(5deg);
+    background: #f1f3f4;
+}
+
+.layer-item.dragging {
+    opacity: 0.6;
+    transform: rotate(3deg) scale(0.95);
+    z-index: 1000;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    border-color: #28a745;
+    background: #d4edda;
 }
 
 .layer-item.drag-over {
-    border-color: #28a745;
-    background: #d4edda;
+    border-color: #ffc107;
+    background: #fff3cd;
+    border-style: dashed;
+    border-width: 2px;
+    transform: scale(1.02);
+}
+
+.layer-item.drag-over::before {
+    content: "↓ שחרר כאן";
+    position: absolute;
+    top: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #ffc107;
+    color: #000;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: bold;
+    z-index: 1001;
+    white-space: nowrap;
+}
+
+/* Drag handle styling */
+.layer-drag-handle {
+    width: 16px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 5px;
+    color: #6c757d;
+    cursor: grab;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.layer-item:hover .layer-drag-handle {
+    opacity: 1;
+}
+
+.layer-item.dragging .layer-drag-handle {
+    opacity: 1;
+    color: #28a745;
+}
+
+.layer-drag-handle:active {
+    cursor: grabbing;
+}
+
+.layer-drag-handle i {
+    font-size: 12px;
 }
 
 /* Responsive behavior */

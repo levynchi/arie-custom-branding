@@ -2802,7 +2802,12 @@ class LayersManager {
     }
 
     addLayer(element, type, name) {
+        console.log(`➕ [ADD LAYER START] ===== ADDING NEW LAYER =====`);
+        console.log(`➕ [ADD LAYER] Type: ${type}, Name: ${name}`);
+        console.log(`➕ [ADD LAYER] Element:`, element);
+        
         const layerId = `layer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        console.log(`➕ [ADD LAYER] Generated ID: ${layerId.slice(-8)}`);
         
         const layer = {
             id: layerId,
@@ -2814,15 +2819,34 @@ class LayersManager {
             order: this.layers.length
         };
 
+        console.log(`➕ [ADD LAYER] Layer object created:`, {
+            id: layer.id.slice(-8),
+            type: layer.type,
+            name: layer.name,
+            order: layer.order
+        });
+
         // הוספת ID לאלמנט
         element.setAttribute('data-layer-id', layerId);
         element.setAttribute('data-layer-type', type);
         element.setAttribute('data-layer-name', name);
+        console.log(`➕ [ADD LAYER] Added data attributes to element`);
 
         this.layers.push(layer);
+        console.log(`➕ [ADD LAYER] Added to layers array. Total layers: ${this.layers.length}`);
+        
+        // עדכון z-index לכל האלמנטים
+        console.log(`➕ [ADD LAYER] Updating z-index for all elements`);
+        this.updateElementsZIndex();
+        
+        // עדכון התצוגה
+        console.log(`➕ [ADD LAYER] Updating layers panel display`);
         this.updateLayersPanel();
         
-        console.log(`🎯 Layer added: ${name} (${type})`);
+        console.log(`✅ [ADD LAYER SUCCESS] Layer added: ${name} (${type}) - Z-index: ${element.style.zIndex}`);
+        console.log(`📊 [ADD LAYER] Current layers order:`, this.layers.map(l => `${l.name} (Z:${l.element.style.zIndex})`));
+        console.log(`➕ [ADD LAYER END] ===== LAYER ADDITION COMPLETED =====`);
+        
         return layerId;
     }
 
@@ -2866,30 +2890,47 @@ class LayersManager {
         const elements = canvas.querySelectorAll('.design-element, .ai-generated');
         
         // עדכון רשימת השכבות על בסיס האלמנטים הקיימים
-        this.layers = Array.from(elements).map((element, index) => {
-            const existingLayer = this.layers.find(layer => layer.element === element);
+        // רק אם אין כבר שכבות או אם מספר האלמנטים השתנה
+        if (this.layers.length === 0 || this.layers.length !== elements.length) {
+            console.log(`🔧 [PANEL UPDATE] Rebuilding layers list - current: ${this.layers.length}, elements: ${elements.length}`);
             
-            if (existingLayer) {
-                return existingLayer;
-            } else {
-                // יצירת שכבה חדשה לאלמנט קיים
-                const type = element.getAttribute('data-layer-type') || this.detectLayerType(element);
-                const name = element.getAttribute('data-layer-name') || this.generateLayerName(element, type);
+            this.layers = Array.from(elements).map((element, index) => {
+                const existingLayer = this.layers.find(layer => layer.element === element);
                 
-                return {
-                    id: `layer_${Date.now()}_${index}`,
-                    element: element,
-                    type: type,
-                    name: name,
-                    visible: !element.classList.contains('layer-hidden'),
-                    created: new Date(),
-                    order: index
-                };
-            }
-        });
+                if (existingLayer) {
+                    return existingLayer;
+                } else {
+                    // יצירת שכבה חדשה לאלמנט קיים
+                    const type = element.getAttribute('data-layer-type') || this.detectLayerType(element);
+                    const name = element.getAttribute('data-layer-name') || this.generateLayerName(element, type);
+                    
+                    return {
+                        id: `layer_${Date.now()}_${index}`,
+                        element: element,
+                        type: type,
+                        name: name,
+                        visible: !element.classList.contains('layer-hidden'),
+                        created: new Date(),
+                        order: index
+                    };
+                }
+            });
+
+            // עדכון z-index רק כשבונים מחדש את הרשימה
+            console.log(`🔧 [PANEL UPDATE] Updating z-index after layer mapping`);
+            this.updateElementsZIndex();
+        } else {
+            console.log(`🔧 [PANEL UPDATE] Keeping existing layer order - no rebuild needed`);
+        }
 
         // הצגת השכבות (בסדר הפוך - האחרון שנוסף יופיע ראשון)
-        const sortedLayers = [...this.layers].reverse();
+        // השכבה עם Z-INDEX הגבוה ביותר תופיע ראשונה ברשימה
+        const sortedLayers = [...this.layers]
+            .sort((a, b) => {
+                const aZ = parseInt(a.element.style.zIndex) || 0;
+                const bZ = parseInt(b.element.style.zIndex) || 0;
+                return bZ - aZ; // מהגבוה לנמוך
+            });
 
         if (sortedLayers.length === 0) {
             layersList.innerHTML = `
@@ -2901,6 +2942,12 @@ class LayersManager {
             return;
         }
 
+        // הודעה מסבירה על גרירה
+        const layersHeader = document.querySelector('.layers-header h6');
+        if (layersHeader && !layersHeader.title) {
+            layersHeader.title = 'גרור שכבות כדי לשנות את הסדר - השכבה העליונה תופיע בחזית';
+        }
+
         layersList.innerHTML = sortedLayers.map((layer, index) => `
             <div class="layer-item ${selectedElement === layer.element ? 'selected' : ''} ${!layer.visible ? 'hidden' : ''}" 
                  data-layer-id="${layer.id}"
@@ -2908,7 +2955,13 @@ class LayersManager {
                  draggable="true"
                  ondragstart="layersManager.handleDragStart(event, '${layer.id}')"
                  ondragover="layersManager.handleDragOver(event)"
-                 ondrop="layersManager.handleDrop(event, '${layer.id}')">
+                 ondragleave="layersManager.handleDragLeave(event)"
+                 ondrop="layersManager.handleDrop(event, '${layer.id}')"
+                 title="גרור לשינוי סדר השכבות">
+                
+                <div class="layer-drag-handle">
+                    <i class="fas fa-grip-vertical"></i>
+                </div>
                 
                 <div class="layer-icon ${this.getLayerIconClass(layer.type)}">
                     <i class="${this.getLayerIcon(layer.type)}"></i>
@@ -2979,22 +3032,35 @@ class LayersManager {
     }
 
     selectLayer(layerId) {
+        console.log(`🎯 [SELECT START] ===== SELECTING LAYER =====`);
+        console.log(`🎯 [SELECT] Layer ID: ${layerId}`);
+        
         const layer = this.layers.find(l => l.id === layerId);
-        if (!layer) return;
+        if (!layer) {
+            console.error(`❌ [SELECT ERROR] Layer not found: ${layerId}`);
+            console.error(`❌ [SELECT ERROR] Available layers:`, this.layers.map(l => l.id));
+            return;
+        }
+
+        console.log(`🎯 [SELECT] Found layer: ${layer.name} (${layer.id.slice(-8)})`);
 
         // ביטול בחירה מכל האלמנטים
+        console.log(`🧹 [SELECT] Clearing selection from all elements`);
         document.querySelectorAll('.design-element, .ai-generated').forEach(el => {
             el.classList.remove('selected');
         });
 
         // בחירת האלמנט
+        console.log(`✅ [SELECT] Adding selection to layer element`);
         layer.element.classList.add('selected');
         selectedElement = layer.element;
 
         // עדכון הפאנל
+        console.log(`🔄 [SELECT] Updating layers panel`);
         this.updateLayersPanel();
 
-        console.log(`🎯 Layer selected: ${layer.name}`);
+        console.log(`🎯 [SELECT SUCCESS] Layer selected: ${layer.name}`);
+        console.log(`🎯 [SELECT END] ===== LAYER SELECTION COMPLETED =====`);
     }
 
     toggleLayerVisibility(layerId) {
@@ -3032,49 +3098,259 @@ class LayersManager {
     }
 
     handleDragStart(event, layerId) {
+        console.log(`🎬 [DRAG START] Starting drag for layer: ${layerId}`);
+        
         event.dataTransfer.setData('text/plain', layerId);
+        event.dataTransfer.effectAllowed = 'move';
+        
         const layerItem = event.target.closest('.layer-item');
-        layerItem.classList.add('dragging');
+        if (layerItem) {
+            layerItem.classList.add('dragging');
+            console.log(`🎬 [DRAG START] Added 'dragging' class to layer item`);
+            
+            // הוספת תמונה קטנה של האלמנט הנגרר
+            const dragImage = layerItem.cloneNode(true);
+            dragImage.style.opacity = '0.8';
+            dragImage.style.transform = 'rotate(5deg)';
+            document.body.appendChild(dragImage);
+            event.dataTransfer.setDragImage(dragImage, 0, 0);
+            setTimeout(() => document.body.removeChild(dragImage), 0);
+            
+            console.log(`🎬 [DRAG START] Created drag image for layer: ${layerId}`);
+        }
+        
+        // הדפסת מצב הרשימה הנוכחי
+        console.log(`📊 [DRAG START] Current layers order:`, this.layers.map(l => ({
+            id: l.id,
+            name: l.name,
+            zIndex: l.element.style.zIndex
+        })));
+        
+        console.log(`🔄 Started dragging layer: ${layerId}`);
     }
 
     handleDragOver(event) {
         event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+        
+        // הסרת drag-over מכל האלמנטים
+        document.querySelectorAll('.layer-item').forEach(item => {
+            item.classList.remove('drag-over');
+        });
+        
+        const layerItem = event.target.closest('.layer-item');
+        if (layerItem && !layerItem.classList.contains('dragging')) {
+            layerItem.classList.add('drag-over');
+            const layerId = layerItem.getAttribute('data-layer-id');
+            console.log(`👆 [DRAG OVER] Hovering over layer: ${layerId}`);
+        }
+    }
+
+    handleDragLeave(event) {
         const layerItem = event.target.closest('.layer-item');
         if (layerItem) {
-            layerItem.classList.add('drag-over');
+            layerItem.classList.remove('drag-over');
+            const layerId = layerItem.getAttribute('data-layer-id');
+            console.log(`👋 [DRAG LEAVE] Left layer: ${layerId}`);
         }
     }
 
     handleDrop(event, targetLayerId) {
+        console.log(`🎯 [DROP START] Drop event triggered on target: ${targetLayerId}`);
+        
         event.preventDefault();
         const draggedLayerId = event.dataTransfer.getData('text/plain');
         
+        console.log(`🎯 [DROP] Dragged layer: ${draggedLayerId}, Target layer: ${targetLayerId}`);
+        
         if (draggedLayerId && draggedLayerId !== targetLayerId) {
+            console.log(`✅ [DROP] Valid drop - proceeding with reorder`);
             this.reorderLayers(draggedLayerId, targetLayerId);
+        } else {
+            console.log(`❌ [DROP] Invalid drop - same layer or missing IDs`);
         }
 
         // ניקוי קלאסים
+        console.log(`🧹 [DROP] Cleaning up drag classes`);
         document.querySelectorAll('.layer-item').forEach(item => {
             item.classList.remove('dragging', 'drag-over');
         });
+        
+        console.log(`🎯 [DROP END] Drop handling completed`);
     }
 
     reorderLayers(draggedLayerId, targetLayerId) {
+        console.log(`🔄 [REORDER START] ===== STARTING LAYER REORDER =====`);
+        console.log(`🔄 [REORDER] Dragged: ${draggedLayerId}, Target: ${targetLayerId}`);
+        
+        // הדפסת מצב ראשוני
+        console.log(`📊 [REORDER] BEFORE - Current layers order:`, 
+            this.layers.map((l, i) => `${i}: ${l.name} (${l.id.slice(-8)}) - Z:${l.element.style.zIndex}`));
+        
         const draggedIndex = this.layers.findIndex(l => l.id === draggedLayerId);
         const targetIndex = this.layers.findIndex(l => l.id === targetLayerId);
         
-        if (draggedIndex === -1 || targetIndex === -1) return;
+        console.log(`🔄 [REORDER] Indices - Dragged: ${draggedIndex}, Target: ${targetIndex}`);
+        
+        if (draggedIndex === -1 || targetIndex === -1) {
+            console.error(`❌ [REORDER ERROR] Invalid layer indices for reordering`);
+            console.error(`❌ [REORDER ERROR] Dragged index: ${draggedIndex}, Target index: ${targetIndex}`);
+            console.error(`❌ [REORDER ERROR] Available layers:`, this.layers.map(l => l.id));
+            return;
+        }
 
-        const draggedLayer = this.layers.splice(draggedIndex, 1)[0];
-        this.layers.splice(targetIndex, 0, draggedLayer);
+        console.log(`🔄 [REORDER] Moving layer from index ${draggedIndex} to position near ${targetIndex}`);
 
-        // עדכון z-index של האלמנטים
-        this.layers.forEach((layer, index) => {
-            layer.element.style.zIndex = 100 + index;
+        // שמירת השכבה הנגררת ושכבת היעד
+        const draggedLayer = this.layers[draggedIndex];
+        const targetLayer = this.layers[targetIndex];
+        
+        console.log(`🔄 [REORDER] Dragged layer details:`, {
+            name: draggedLayer.name,
+            id: draggedLayer.id.slice(-8),
+            currentIndex: draggedIndex
+        });
+        
+        console.log(`🔄 [REORDER] Target layer details:`, {
+            name: targetLayer.name,
+            id: targetLayer.id.slice(-8),
+            currentIndex: targetIndex
         });
 
-        this.updateLayersPanel();
-        console.log(`🔄 Layers reordered`);
+        // החלפת מקומות - פשוט נחליף את השכבות ברשימה
+        this.layers[draggedIndex] = targetLayer;
+        this.layers[targetIndex] = draggedLayer;
+        
+        console.log(`🔄 [REORDER] Swapped layers: "${draggedLayer.name}" ↔ "${targetLayer.name}"`);
+
+        // הדפסת מצב אחרי הזיזוז
+        console.log(`📊 [REORDER] AFTER SPLICE - New layers order:`, 
+            this.layers.map((l, i) => `${i}: ${l.name} (${l.id.slice(-8)})`));
+
+        // עדכון z-index של כל האלמנטים בקנבס
+        console.log(`🎚️ [REORDER] Updating z-index for all elements...`);
+        this.updateElementsZIndex();
+        
+        // עדכון התצוגה - רק רענון ויזואלי ללא שינוי הסדר
+        console.log(`🖼️ [REORDER] Refreshing layers panel display...`);
+        this.refreshLayersDisplay();
+        
+        console.log(`✅ [REORDER SUCCESS] Layers successfully reordered - ${draggedLayer.name} moved`);
+        console.log(`📊 [REORDER] FINAL - Current layer order:`, 
+            this.layers.map((l, i) => `${i}: ${l.name} (Z:${l.element.style.zIndex})`));
+        console.log(`🔄 [REORDER END] ===== LAYER REORDER COMPLETED =====`);
+    }
+
+    // פונקציה נפרדת לרענון התצוגה בלבד
+    refreshLayersDisplay() {
+        const layersList = document.getElementById('layersList');
+        if (!layersList) return;
+
+        // הצגת השכבות (בסדר הפוך - האחרון שנוסף יופיע ראשון)
+        // השכבה עם Z-INDEX הגבוה ביותר תופיע ראשונה ברשימה
+        const sortedLayers = [...this.layers]
+            .sort((a, b) => {
+                const aZ = parseInt(a.element.style.zIndex) || 0;
+                const bZ = parseInt(b.element.style.zIndex) || 0;
+                return bZ - aZ; // מהגבוה לנמוך
+            });
+
+        if (sortedLayers.length === 0) {
+            layersList.innerHTML = `
+                <div class="no-layers-message text-center text-muted">
+                    <i class="fas fa-info-circle mb-2"></i>
+                    <small>אין שכבות עדיין<br>הוסף אלמנטים לקנבס</small>
+                </div>
+            `;
+            return;
+        }
+
+        // הודעה מסבירה על גרירה
+        const layersHeader = document.querySelector('.layers-header h6');
+        if (layersHeader && !layersHeader.title) {
+            layersHeader.title = 'גרור שכבות כדי לשנות את הסדר - השכבה העליונה תופיע בחזית';
+        }
+
+        layersList.innerHTML = sortedLayers.map((layer, index) => `
+            <div class="layer-item ${selectedElement === layer.element ? 'selected' : ''} ${!layer.visible ? 'hidden' : ''}" 
+                 data-layer-id="${layer.id}"
+                 onclick="layersManager.selectLayer('${layer.id}')"
+                 draggable="true"
+                 ondragstart="layersManager.handleDragStart(event, '${layer.id}')"
+                 ondragover="layersManager.handleDragOver(event)"
+                 ondragleave="layersManager.handleDragLeave(event)"
+                 ondrop="layersManager.handleDrop(event, '${layer.id}')"
+                 title="גרור לשינוי סדר השכבות">
+                
+                <div class="layer-drag-handle">
+                    <i class="fas fa-grip-vertical"></i>
+                </div>
+                
+                <div class="layer-icon ${this.getLayerIconClass(layer.type)}">
+                    <i class="${this.getLayerIcon(layer.type)}"></i>
+                </div>
+                
+                <div class="layer-info">
+                    <div class="layer-name">${layer.name}</div>
+                    <div class="layer-type">${this.getLayerTypeText(layer.type)}</div>
+                </div>
+                
+                <div class="layer-controls">
+                    <button class="layer-control-btn visibility-btn ${!layer.visible ? 'hidden' : ''}" 
+                            onclick="event.stopPropagation(); layersManager.toggleLayerVisibility('${layer.id}')"
+                            title="${layer.visible ? 'הסתר שכבה' : 'הצג שכבה'}">
+                        <i class="fas ${layer.visible ? 'fa-eye' : 'fa-eye-slash'}"></i>
+                    </button>
+                    <button class="layer-control-btn delete-btn" 
+                            onclick="event.stopPropagation(); layersManager.deleteLayer('${layer.id}')"
+                            title="מחק שכבה">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    updateElementsZIndex() {
+        console.log(`🎚️ [Z-INDEX START] ===== UPDATING Z-INDEX VALUES =====`);
+        
+        // עדכון z-index לכל האלמנטים בהתאם לסדרם ברשימה
+        // הרשימה מוצגת בסדר הפוך, כך שהאלמנט הראשון ברשימה
+        // צריך להיות עם ה-z-index הגבוה ביותר
+        const totalLayers = this.layers.length;
+        console.log(`🎚️ [Z-INDEX] Total layers to update: ${totalLayers}`);
+        
+        this.layers.forEach((layer, index) => {
+            // z-index גבוה יותר לשכבות שמופיעות ראשונות ברשימה
+            const zIndex = 100 + (totalLayers - index);
+            const oldZIndex = layer.element.style.zIndex;
+            
+            layer.element.style.zIndex = zIndex;
+            layer.order = index;
+            
+            console.log(`🎚️ [Z-INDEX] Layer "${layer.name}" (${layer.id.slice(-8)}):`, {
+                listPosition: index,
+                oldZIndex: oldZIndex,
+                newZIndex: zIndex,
+                formula: `100 + (${totalLayers} - ${index}) = ${zIndex}`
+            });
+        });
+        
+        // בדיקת z-index בקנבס
+        const canvasElements = document.querySelectorAll('#designCanvas .design-element, #designCanvas .ai-generated');
+        console.log(`🔍 [Z-INDEX CHECK] Canvas elements found: ${canvasElements.length}`);
+        
+        canvasElements.forEach((element, index) => {
+            const layerId = element.getAttribute('data-layer-id');
+            const zIndex = element.style.zIndex;
+            console.log(`🔍 [Z-INDEX CHECK] Canvas element ${index}:`, {
+                layerId: layerId ? layerId.slice(-8) : 'NO-ID',
+                zIndex: zIndex,
+                position: `${element.style.left}, ${element.style.top}`
+            });
+        });
+        
+        console.log(`🎚️ [Z-INDEX END] ===== Z-INDEX UPDATE COMPLETED =====`);
     }
 }
 
@@ -3102,8 +3378,32 @@ function toggleLayersPanel() {
 let layersManager;
 
 document.addEventListener('DOMContentLoaded', function() {
-    layersManager = new LayersManager();
-    console.log('🎭 Layers Manager initialized');
+    console.log(`🎭 [INIT START] ===== INITIALIZING LAYERS MANAGER =====`);
+    
+    try {
+        layersManager = new LayersManager();
+        console.log(`✅ [INIT SUCCESS] Layers Manager created successfully`);
+        console.log(`🎭 [INIT] LayersManager instance:`, layersManager);
+        
+        // בדיקת זמינות אלמנטים בדף
+        const layersPanel = document.getElementById('layersPanel');
+        const layersList = document.getElementById('layersList');
+        const designCanvas = document.getElementById('designCanvas');
+        
+        console.log(`🔍 [INIT CHECK] Elements availability:`, {
+            layersPanel: !!layersPanel,
+            layersList: !!layersList,
+            designCanvas: !!designCanvas
+        });
+        
+        if (!layersPanel || !layersList || !designCanvas) {
+            console.warn(`⚠️ [INIT WARNING] Some required elements are missing`);
+        }
+        
+        console.log(`🎭 [INIT END] ===== LAYERS MANAGER INITIALIZATION COMPLETED =====`);
+    } catch (error) {
+        console.error(`❌ [INIT ERROR] Failed to initialize Layers Manager:`, error);
+    }
 });
 
 // עדכון הפונקציות הקיימות להוסיף שכבות אוטומטית

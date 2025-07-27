@@ -4,7 +4,7 @@
 {% block title %}עיצוב אישי - אריה קאסטום מיתוגים{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'main/css/custom_design.css' %}?v=20250727160000">
+    <link rel="stylesheet" href="{% static 'main/css/custom_design.css' %}?v=20250727170000">
 {% endblock %}
 
 {% block content %}
@@ -16,7 +16,7 @@
         <div class="header-left">
             <h4 class="mb-0">
                 <i class="fas fa-palette me-2"></i>
-                עיצוב אישי
+              <script src="{% static 'main/js/custom_design.js' %}?v=20250727183000"></script>     עיצוב אישי
             </h4>
         </div>
         <div class="header-center">
@@ -575,5 +575,5 @@ window.createCurvedText = createHebrewArchText;
 
 console.log('✅ Professional Arc Text System loaded successfully');
 </script>
-<script src="{% static 'main/js/custom_design.js' %}?v=20250722170000"></script>
+<script src="{% static 'main/js/custom_design.js' %}?v=20250727180000"></script>
 {% endblock %}
