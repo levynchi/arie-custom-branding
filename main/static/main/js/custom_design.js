@@ -537,6 +537,14 @@ function selectElement(elementOrEvent) {
 function deleteElement(elementId) {
     const element = document.getElementById(elementId);
     if (element) {
+        // Remove from layers panel
+        if (layersManager) {
+            const layerId = element.getAttribute('data-layer-id');
+            if (layerId) {
+                layersManager.removeLayer(layerId);
+            }
+        }
+        
         element.remove();
         selectedElement = null;
     }
@@ -1308,6 +1316,11 @@ async function generateAIDesign() {
             
             canvas.appendChild(imageElement);
             makeElementInteractive(imageElement);
+            
+            // Add to layers panel
+            if (layersManager) {
+                layersManager.addLayer(imageElement, 'ai', 'עיצוב AI');
+            }
             
             console.log('✨ AI element added with "creating" class - logo should appear');
             console.log('🔍 Element background after adding:', window.getComputedStyle(imageElement).backgroundColor);
@@ -2655,6 +2668,11 @@ function addFreepikImageToCanvas(imageUrl, imageTitle) {
         // Add to canvas
         canvas.appendChild(imageElement);
         
+        // Add to layers panel
+        if (layersManager) {
+            layersManager.addLayer(imageElement, 'freepik', imageTitle || 'תמונה מפרייפיק');
+        }
+        
         // Select the new element
         selectElement(imageElement);
         
@@ -2754,3 +2772,386 @@ function zoomOut() {
         }
     }
 }
+
+// Layers Panel Management
+class LayersManager {
+    constructor() {
+        this.layers = [];
+        this.panelCollapsed = false;
+        this.init();
+    }
+
+    init() {
+        this.updateLayersPanel();
+        this.setupEventListeners();
+    }
+
+    setupEventListeners() {
+        // עדכון פאנל כאשר אלמנטים מתווספים או מוסרים
+        const canvas = document.getElementById('designCanvas');
+        if (canvas) {
+            const observer = new MutationObserver(() => {
+                this.updateLayersPanel();
+            });
+            
+            observer.observe(canvas, {
+                childList: true,
+                subtree: true
+            });
+        }
+    }
+
+    addLayer(element, type, name) {
+        const layerId = `layer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        const layer = {
+            id: layerId,
+            element: element,
+            type: type,
+            name: name,
+            visible: true,
+            created: new Date(),
+            order: this.layers.length
+        };
+
+        // הוספת ID לאלמנט
+        element.setAttribute('data-layer-id', layerId);
+        element.setAttribute('data-layer-type', type);
+        element.setAttribute('data-layer-name', name);
+
+        this.layers.push(layer);
+        this.updateLayersPanel();
+        
+        console.log(`🎯 Layer added: ${name} (${type})`);
+        return layerId;
+    }
+
+    removeLayer(layerId) {
+        this.layers = this.layers.filter(layer => layer.id !== layerId);
+        this.updateLayersPanel();
+    }
+
+    getLayerIcon(type) {
+        const icons = {
+            'ai': 'fas fa-robot',
+            'text': 'fas fa-font',
+            'image': 'fas fa-image',
+            'upload': 'fas fa-upload',
+            'emoji': 'fas fa-smile',
+            'freepik': 'fas fa-search'
+        };
+        return icons[type] || 'fas fa-layer-group';
+    }
+
+    getLayerIconClass(type) {
+        const classes = {
+            'ai': 'ai-icon',
+            'text': 'text-icon',
+            'image': 'image-icon',
+            'upload': 'image-icon',
+            'emoji': 'emoji-icon',
+            'freepik': 'image-icon'
+        };
+        return classes[type] || '';
+    }
+
+    updateLayersPanel() {
+        const layersList = document.getElementById('layersList');
+        if (!layersList) return;
+
+        // איתור כל האלמנטים בקנבס
+        const canvas = document.getElementById('designCanvas');
+        if (!canvas) return;
+
+        const elements = canvas.querySelectorAll('.design-element, .ai-generated');
+        
+        // עדכון רשימת השכבות על בסיס האלמנטים הקיימים
+        this.layers = Array.from(elements).map((element, index) => {
+            const existingLayer = this.layers.find(layer => layer.element === element);
+            
+            if (existingLayer) {
+                return existingLayer;
+            } else {
+                // יצירת שכבה חדשה לאלמנט קיים
+                const type = element.getAttribute('data-layer-type') || this.detectLayerType(element);
+                const name = element.getAttribute('data-layer-name') || this.generateLayerName(element, type);
+                
+                return {
+                    id: `layer_${Date.now()}_${index}`,
+                    element: element,
+                    type: type,
+                    name: name,
+                    visible: !element.classList.contains('layer-hidden'),
+                    created: new Date(),
+                    order: index
+                };
+            }
+        });
+
+        // הצגת השכבות (בסדר הפוך - האחרון שנוסף יופיע ראשון)
+        const sortedLayers = [...this.layers].reverse();
+
+        if (sortedLayers.length === 0) {
+            layersList.innerHTML = `
+                <div class="no-layers-message text-center text-muted">
+                    <i class="fas fa-info-circle mb-2"></i>
+                    <small>אין שכבות עדיין<br>הוסף אלמנטים לקנבס</small>
+                </div>
+            `;
+            return;
+        }
+
+        layersList.innerHTML = sortedLayers.map((layer, index) => `
+            <div class="layer-item ${selectedElement === layer.element ? 'selected' : ''} ${!layer.visible ? 'hidden' : ''}" 
+                 data-layer-id="${layer.id}"
+                 onclick="layersManager.selectLayer('${layer.id}')"
+                 draggable="true"
+                 ondragstart="layersManager.handleDragStart(event, '${layer.id}')"
+                 ondragover="layersManager.handleDragOver(event)"
+                 ondrop="layersManager.handleDrop(event, '${layer.id}')">
+                
+                <div class="layer-icon ${this.getLayerIconClass(layer.type)}">
+                    <i class="${this.getLayerIcon(layer.type)}"></i>
+                </div>
+                
+                <div class="layer-info">
+                    <div class="layer-name">${layer.name}</div>
+                    <div class="layer-type">${this.getLayerTypeText(layer.type)}</div>
+                </div>
+                
+                <div class="layer-controls">
+                    <button class="layer-control-btn visibility-btn ${!layer.visible ? 'hidden' : ''}" 
+                            onclick="event.stopPropagation(); layersManager.toggleLayerVisibility('${layer.id}')"
+                            title="${layer.visible ? 'הסתר שכבה' : 'הצג שכבה'}">
+                        <i class="fas ${layer.visible ? 'fa-eye' : 'fa-eye-slash'}"></i>
+                    </button>
+                    <button class="layer-control-btn delete-btn" 
+                            onclick="event.stopPropagation(); layersManager.deleteLayer('${layer.id}')"
+                            title="מחק שכבה">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    detectLayerType(element) {
+        if (element.classList.contains('ai-generated')) return 'ai';
+        if (element.classList.contains('text-element')) return 'text';
+        if (element.querySelector('img')) return 'image';
+        if (element.classList.contains('emoji-element')) return 'emoji';
+        return 'unknown';
+    }
+
+    generateLayerName(element, type) {
+        const typeNames = {
+            'ai': 'עיצוב AI',
+            'text': 'טקסט',
+            'image': 'תמונה',
+            'upload': 'תמונה מועלית',
+            'emoji': 'אימוג\'י',
+            'freepik': 'תמונה מפרייפיק'
+        };
+
+        const baseName = typeNames[type] || 'אלמנט';
+        const count = this.layers.filter(l => l.type === type).length + 1;
+        
+        if (type === 'text') {
+            const textContent = element.textContent || element.innerText;
+            if (textContent && textContent.trim()) {
+                return textContent.trim().substring(0, 20) + (textContent.length > 20 ? '...' : '');
+            }
+        }
+        
+        return `${baseName} ${count}`;
+    }
+
+    getLayerTypeText(type) {
+        const types = {
+            'ai': 'בינה מלאכותית',
+            'text': 'טקסט',
+            'image': 'תמונה',
+            'upload': 'תמונה מועלית',
+            'emoji': 'אימוג\'י',
+            'freepik': 'פרייפיק'
+        };
+        return types[type] || 'לא ידוע';
+    }
+
+    selectLayer(layerId) {
+        const layer = this.layers.find(l => l.id === layerId);
+        if (!layer) return;
+
+        // ביטול בחירה מכל האלמנטים
+        document.querySelectorAll('.design-element, .ai-generated').forEach(el => {
+            el.classList.remove('selected');
+        });
+
+        // בחירת האלמנט
+        layer.element.classList.add('selected');
+        selectedElement = layer.element;
+
+        // עדכון הפאנל
+        this.updateLayersPanel();
+
+        console.log(`🎯 Layer selected: ${layer.name}`);
+    }
+
+    toggleLayerVisibility(layerId) {
+        const layer = this.layers.find(l => l.id === layerId);
+        if (!layer) return;
+
+        layer.visible = !layer.visible;
+        
+        if (layer.visible) {
+            layer.element.classList.remove('layer-hidden');
+            layer.element.style.display = '';
+        } else {
+            layer.element.classList.add('layer-hidden');
+            layer.element.style.display = 'none';
+        }
+
+        this.updateLayersPanel();
+        console.log(`👁️ Layer visibility toggled: ${layer.name} - ${layer.visible ? 'visible' : 'hidden'}`);
+    }
+
+    deleteLayer(layerId) {
+        const layer = this.layers.find(l => l.id === layerId);
+        if (!layer) return;
+
+        if (confirm(`האם אתה בטוח שברצונך למחוק את השכבה "${layer.name}"?`)) {
+            layer.element.remove();
+            this.removeLayer(layerId);
+            
+            if (selectedElement === layer.element) {
+                selectedElement = null;
+            }
+            
+            console.log(`🗑️ Layer deleted: ${layer.name}`);
+        }
+    }
+
+    handleDragStart(event, layerId) {
+        event.dataTransfer.setData('text/plain', layerId);
+        const layerItem = event.target.closest('.layer-item');
+        layerItem.classList.add('dragging');
+    }
+
+    handleDragOver(event) {
+        event.preventDefault();
+        const layerItem = event.target.closest('.layer-item');
+        if (layerItem) {
+            layerItem.classList.add('drag-over');
+        }
+    }
+
+    handleDrop(event, targetLayerId) {
+        event.preventDefault();
+        const draggedLayerId = event.dataTransfer.getData('text/plain');
+        
+        if (draggedLayerId && draggedLayerId !== targetLayerId) {
+            this.reorderLayers(draggedLayerId, targetLayerId);
+        }
+
+        // ניקוי קלאסים
+        document.querySelectorAll('.layer-item').forEach(item => {
+            item.classList.remove('dragging', 'drag-over');
+        });
+    }
+
+    reorderLayers(draggedLayerId, targetLayerId) {
+        const draggedIndex = this.layers.findIndex(l => l.id === draggedLayerId);
+        const targetIndex = this.layers.findIndex(l => l.id === targetLayerId);
+        
+        if (draggedIndex === -1 || targetIndex === -1) return;
+
+        const draggedLayer = this.layers.splice(draggedIndex, 1)[0];
+        this.layers.splice(targetIndex, 0, draggedLayer);
+
+        // עדכון z-index של האלמנטים
+        this.layers.forEach((layer, index) => {
+            layer.element.style.zIndex = 100 + index;
+        });
+
+        this.updateLayersPanel();
+        console.log(`🔄 Layers reordered`);
+    }
+}
+
+// פונקציות גלובליות לפאנל השכבות
+function toggleLayersPanel() {
+    const panel = document.getElementById('layersPanel');
+    const icon = document.getElementById('layersPanelToggleIcon');
+    
+    if (!panel || !icon) return;
+
+    if (layersManager.panelCollapsed) {
+        panel.classList.remove('collapsed');
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+        layersManager.panelCollapsed = false;
+    } else {
+        panel.classList.add('collapsed');
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+        layersManager.panelCollapsed = true;
+    }
+}
+
+// אתחול מנהל השכבות
+let layersManager;
+
+document.addEventListener('DOMContentLoaded', function() {
+    layersManager = new LayersManager();
+    console.log('🎭 Layers Manager initialized');
+});
+
+// עדכון הפונקציות הקיימות להוסיף שכבות אוטומטית
+document.addEventListener('DOMContentLoaded', function() {
+    // Hook into existing functions to automatically add layers
+    const originalFunctions = {
+        addText: window.addText,
+        addImage: window.addImage,
+        addEmoji: window.addEmoji
+    };
+
+    // Override addText function
+    if (window.addText) {
+        window.addText = function() {
+            const result = originalFunctions.addText.apply(this, arguments);
+            setTimeout(() => {
+                if (layersManager && selectedElement) {
+                    const text = document.getElementById('textInput')?.value || 'טקסט חדש';
+                    layersManager.addLayer(selectedElement, 'text', text);
+                }
+            }, 100);
+            return result;
+        };
+    }
+
+    // Override addImage function  
+    if (window.addImage) {
+        window.addImage = function() {
+            const result = originalFunctions.addImage.apply(this, arguments);
+            setTimeout(() => {
+                if (layersManager && selectedElement) {
+                    layersManager.addLayer(selectedElement, 'upload', 'תמונה מועלית');
+                }
+            }, 100);
+            return result;
+        };
+    }
+
+    // Override addEmoji function
+    if (window.addEmoji) {
+        window.addEmoji = function(emoji) {
+            const result = originalFunctions.addEmoji.apply(this, arguments);
+            setTimeout(() => {
+                if (layersManager && selectedElement) {
+                    layersManager.addLayer(selectedElement, 'emoji', `אימוג'י ${emoji}`);
+                }
+            }, 100);
+            return result;
+        };
+    }
+});
