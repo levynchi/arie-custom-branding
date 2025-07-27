@@ -22,7 +22,7 @@ body.custom-design-page {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
 }
 
-.design-interface *:not(.fas):not(.far):not(.fab):not(.fal):not([class*="fa-"]) {
+.design-interface *:not(.fas):not(.far):not(.fab):not(.fal):not([class*="fa-"]):not(.js-text-editable):not([contenteditable]):not(.design-element):not(.text-element) {
     font-family: inherit !important;
 }
 
@@ -546,6 +546,23 @@ select.font-preview-select[data-current-font="Noto Sans Hebrew"] { font-family: 
     width: fit-content;       /* ברוב הדפדפנים המודרניים */
     height: auto;
     white-space: nowrap;      /* ימנע כיפוף שורות */
+}
+
+/* מניעת שכתוב פונט עבור אלמנטי טקסט עריכים */
+.js-text-editable[style*="font-family"],
+span[contenteditable][style*="font-family"] {
+    font-family: inherit !important; /* יקבל את הפונט מהאלמנט האב */
+}
+
+/* אפשרות לשכתוב פונט כשהוא מוגדר בסטייל ישירות */
+.text-element[style*="font-family"] .js-text-editable,
+.text-element[style*="font-family"] span[contenteditable] {
+    font-family: inherit !important;
+}
+
+/* כלל חזק לכפיית פונט על אלמנטי טקסט */
+.design-element.text-element[style*="font-family"] * {
+    font-family: inherit !important;
 }
 
 .design-element.text-element span:focus {

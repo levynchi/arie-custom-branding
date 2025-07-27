@@ -819,29 +819,97 @@ function changeFontFamily(fontFamily) {
     
     // Apply to currently selected element if it exists
     if (selectedElement && selectedElement.classList.contains('text-element')) {
-        console.log('Applying font family to selected element:', selectedElement);
-        const textSpan = selectedElement.querySelector('span[contenteditable]');
+        console.log('🎨 [FONT] Applying font family to selected element:', selectedElement);
+        
+        // קודם כל, נחיל את הפונט על האלמנט האב
+        selectedElement.style.fontFamily = fontFamily + ' !important';
+        console.log('🎨 [FONT] Applied to parent element:', selectedElement.style.fontFamily);
+        
+        // חיפוש מורחב לכל סוגי טקסט
+        const textSpan = selectedElement.querySelector('span[contenteditable], .js-text-editable, span');
         if (textSpan) {
-            console.log('Found text span, applying font family:', fontFamily);
-            textSpan.style.fontFamily = fontFamily;
+            console.log('🎨 [FONT] Found text span, applying font family:', fontFamily);
+            
+            // הסרת הגדרות פונט קיימות
+            textSpan.style.removeProperty('font-family');
+            
+            // שינוי הגישה - נחיל על האלמנט האב במקום על הספאן
+            textSpan.parentElement.style.fontFamily = fontFamily + ' !important';
+            
+            // כפיפה ישירה
+            textSpan.style.fontFamily = fontFamily + ' !important';
+            textSpan.style.setProperty('font-family', fontFamily, 'important');
+            
+            console.log('🎨 [FONT] Final span font:', textSpan.style.fontFamily);
+            console.log('🎨 [FONT] Final computed font:', window.getComputedStyle(textSpan).fontFamily);
         } else {
-            console.log('No text span found in selected element');
+            console.log('🎨 [FONT] No text span found in selected element');
         }
     } else {
-        console.log('No selected text element found');
+        console.log('🎨 [FONT] No selected text element found');
     }
     
     // Also update any focused contenteditable element (blue border state)
     const focusedElement = document.activeElement;
-    if (focusedElement && focusedElement.hasAttribute('contenteditable')) {
+    if (focusedElement && (focusedElement.hasAttribute('contenteditable') || focusedElement.classList.contains('js-text-editable'))) {
         console.log('Applying font family to focused element:', focusedElement);
-        focusedElement.style.fontFamily = fontFamily;
+        focusedElement.style.fontFamily = fontFamily + ' !important';
+        console.log('Applied font family with !important to focused element:', focusedElement.style.fontFamily);
         
         // Also select the parent element to make sure it's in the selected state
         const parentElement = focusedElement.closest('.design-element');
         if (parentElement && !parentElement.classList.contains('selected')) {
             selectElement(parentElement);
         }
+    }
+    
+    // חיפוש נוסף עבור כל האלמנטים עם js-text-editable
+    const allTextEditables = document.querySelectorAll('.js-text-editable');
+    if (allTextEditables.length > 0) {
+        console.log(`🔤 [FONT] Found ${allTextEditables.length} js-text-editable elements`);
+        allTextEditables.forEach((textEl, index) => {
+            const parentTextElement = textEl.closest('.text-element');
+            if (parentTextElement && parentTextElement.classList.contains('selected')) {
+                console.log(`📝 [FONT] Applying font to selected js-text-editable #${index}`);
+                
+                // שימוש בכמה שיטות כדי לכפות את הפונט
+                textEl.style.fontFamily = fontFamily + ' !important';
+                textEl.style.setProperty('font-family', fontFamily, 'important');
+                
+                // גם על האלמנט האב
+                parentTextElement.style.fontFamily = fontFamily + ' !important';
+                parentTextElement.style.setProperty('font-family', fontFamily, 'important');
+                
+                console.log(`📝 [FONT] Applied to element #${index}, computed:`, window.getComputedStyle(textEl).fontFamily);
+            }
+        });
+    }
+    
+    // פונקציה נוספת לכפיית הפונט אחרי זמן קצר
+    setTimeout(() => {
+        forceFontOnSelected(fontFamily);
+    }, 100);
+}
+
+// פונקציה נוספת לכפיית פונט על אלמנט נבחר
+function forceFontOnSelected(fontFamily) {
+    console.log(`🔫 [FORCE FONT] Forcing font: ${fontFamily}`);
+    
+    if (selectedElement && selectedElement.classList.contains('text-element')) {
+        // כפיית פונט על האלמנט הראשי
+        selectedElement.style.fontFamily = fontFamily + ' !important';
+        selectedElement.style.setProperty('font-family', fontFamily, 'important');
+        
+        // כפיית פונט על כל הטקסט בתוכו
+        const allTextElements = selectedElement.querySelectorAll('span, .js-text-editable, [contenteditable]');
+        allTextElements.forEach((textEl, index) => {
+            textEl.style.fontFamily = fontFamily + ' !important';
+            textEl.style.setProperty('font-family', fontFamily, 'important');
+            
+            console.log(`🔫 [FORCE FONT] Forced on child #${index}:`, window.getComputedStyle(textEl).fontFamily);
+        });
+        
+        console.log(`🔫 [FORCE FONT] Completed for:`, selectedElement);
     }
 }
 
