@@ -274,6 +274,7 @@ function addText() {
     textElement.innerHTML = `
         <span contenteditable="true" class="js-text-editable">${textContent}</span>
         <button class="delete-btn" onclick="deleteElement('${textElement.id}')">&times;</button>
+        <button class="rotate-btn" onclick="rotateElement(document.getElementById('${textElement.id}'), event)" title="סובב טקסט"><i class="fas fa-redo"></i></button>
     `;
     textElement.style.left = '50px';
     textElement.style.top = '50px';
@@ -298,6 +299,18 @@ function addText() {
     const archValue = isArched ? document.getElementById('archCurve').value : 0;
     
     canvas.appendChild(textElement);
+    
+    console.log('🔄 [ROTATE DEBUG] Text element created');
+    console.log('🔄 [ROTATE DEBUG] Element ID:', textElement.id);
+    console.log('🔄 [ROTATE DEBUG] Element innerHTML:', textElement.innerHTML);
+    
+    // Check if rotate button was created
+    const rotateBtn = textElement.querySelector('.rotate-btn');
+    console.log('🔄 [ROTATE DEBUG] Text rotate button found:', rotateBtn);
+    if (rotateBtn) {
+        console.log('🔄 [ROTATE DEBUG] Text rotate button classes:', rotateBtn.className);
+        console.log('🔄 [ROTATE DEBUG] Text rotate button innerHTML:', rotateBtn.innerHTML);
+    }
     
     // Apply color, font, and effects to the span element (not the container)
     const textSpan = textElement.querySelector('span[contenteditable]');
@@ -352,12 +365,25 @@ function addEmoji(emoji) {
     emojiElement.innerHTML = `
         <span class="js-emoji-large">${emoji}</span>
         <button class="delete-btn" onclick="deleteElement('${emojiElement.id}')">&times;</button>
+        <button class="rotate-btn" onclick="rotateElement(document.getElementById('${emojiElement.id}'), event)" title="סובב אימוג'י"><i class="fas fa-redo"></i></button>
     `;
     emojiElement.style.left = '150px';
     emojiElement.style.top = '150px';
     
     canvas.appendChild(emojiElement);
     makeElementInteractive(emojiElement);
+    
+    console.log('🔄 [ROTATE DEBUG] Emoji element created');
+    console.log('🔄 [ROTATE DEBUG] Element ID:', emojiElement.id);
+    console.log('🔄 [ROTATE DEBUG] Element innerHTML:', emojiElement.innerHTML);
+    
+    // Check if rotate button was created
+    const rotateBtn = emojiElement.querySelector('.rotate-btn');
+    console.log('🔄 [ROTATE DEBUG] Emoji rotate button found:', rotateBtn);
+    if (rotateBtn) {
+        console.log('🔄 [ROTATE DEBUG] Emoji rotate button classes:', rotateBtn.className);
+        console.log('🔄 [ROTATE DEBUG] Emoji rotate button innerHTML:', rotateBtn.innerHTML);
+    }
     
     // Hide emoji picker
     document.getElementById('emojiPicker').classList.add('hidden');
@@ -371,11 +397,22 @@ function toggleEmojiPicker() {
 
 // Element Interaction
 function makeElementInteractive(element) {
+    console.log('🔄 [ROTATE DEBUG] Making element interactive:', element.id);
+    
     element.addEventListener('mousedown', startDrag);
     element.addEventListener('click', function(e) {
         console.log('🖱️ Element clicked:', element.id);
         console.log('🎯 Element classes:', element.className);
         console.log('🤖 Is AI generated?', element.classList.contains('ai-generated'));
+        console.log('🔄 [ROTATE DEBUG] Click target:', e.target);
+        console.log('🔄 [ROTATE DEBUG] Click target classes:', e.target.className);
+        
+        // Check if this is a rotate button click
+        if (e.target.classList.contains('rotate-btn') || e.target.closest('.rotate-btn')) {
+            console.log('🔄 [ROTATE DEBUG] Detected rotate button click, calling rotateElement');
+            rotateElement(element, e);
+            return;
+        }
         
         e.stopPropagation(); // Prevent canvas click event
         selectElement(element); // Pass element, not event
@@ -434,8 +471,21 @@ function makeElementInteractive(element) {
 
 // Drag and Drop
 function startDrag(e) {
-    if (e.target.classList.contains('delete-btn')) return;
-    if (e.target.hasAttribute('contenteditable')) return;
+    console.log('🔄 [ROTATE DEBUG] startDrag called, target:', e.target);
+    console.log('🔄 [ROTATE DEBUG] startDrag target classes:', e.target.className);
+    
+    if (e.target.classList.contains('delete-btn')) {
+        console.log('🔄 [ROTATE DEBUG] Ignoring drag - delete button');
+        return;
+    }
+    if (e.target.classList.contains('rotate-btn')) {
+        console.log('🔄 [ROTATE DEBUG] Ignoring drag - rotate button');
+        return;
+    }
+    if (e.target.hasAttribute('contenteditable')) {
+        console.log('🔄 [ROTATE DEBUG] Ignoring drag - contenteditable');
+        return;
+    }
     
     console.log('🖱️ StartDrag called for element:', e.currentTarget.id);
     
@@ -532,6 +582,29 @@ function selectElement(elementOrEvent) {
     
     // Update UI controls if it's a text element
     updateUIControlsFromElement(element);
+    
+    // Auto-activate appropriate tool when selecting an element
+    if (element.classList.contains('text-element')) {
+        console.log('🎯 Text element selected - auto-activating text tool');
+        
+        // Find the text tool button
+        const textToolButton = document.querySelector('[data-tool="text"]');
+        if (textToolButton) {
+            // Activate the text tool
+            selectTool(textToolButton, 'text');
+            console.log('✅ Text tool activated automatically');
+        }
+    } else if (element.classList.contains('design-image') || element.classList.contains('image-element') || element.querySelector('.image-element')) {
+        console.log('🖼️ Image element selected - auto-activating images tool');
+        
+        // Find the images tool button
+        const imagesToolButton = document.querySelector('[data-tool="images"]');
+        if (imagesToolButton) {
+            // Activate the images tool
+            selectTool(imagesToolButton, 'images');
+            console.log('✅ Images tool activated automatically');
+        }
+    }
 }
 
 function deleteElement(elementId) {
@@ -547,6 +620,203 @@ function deleteElement(elementId) {
         
         element.remove();
         selectedElement = null;
+    }
+}
+
+// Rotate Element Function
+function rotateElement(element, clickEvent) {
+    console.log('🔄 [ROTATE DEBUG] rotateElement called');
+    console.log('🔄 [ROTATE DEBUG] element:', element);
+    console.log('🔄 [ROTATE DEBUG] clickEvent:', clickEvent);
+    console.log('🔄 [ROTATE DEBUG] element.id:', element ? element.id : 'NO ID');
+    console.log('🔄 [ROTATE DEBUG] element.className:', element ? element.className : 'NO CLASS');
+    
+    if (!element) {
+        console.error('❌ [ROTATE DEBUG] No element provided to rotate');
+        return;
+    }
+    
+    // If called with click event, prevent it from bubbling
+    if (clickEvent) {
+        console.log('🔄 [ROTATE DEBUG] Stopping event propagation');
+        clickEvent.stopPropagation();
+        clickEvent.preventDefault();
+    }
+    
+    // Start rotation mode
+    startRotationMode(element);
+}
+
+// Start rotation mode with mouse drag
+function startRotationMode(element) {
+    console.log('🔄 [ROTATE DEBUG] Starting rotation mode for:', element.id);
+    console.log('🔄 [ROTATE DEBUG] Element rect:', element.getBoundingClientRect());
+    
+    // Ensure element is selected
+    selectElement(element);
+    
+    // Get current rotation or set to 0 if not set
+    let currentRotation = element.dataset.rotation || 0;
+    currentRotation = parseFloat(currentRotation);
+    console.log('🔄 [ROTATE DEBUG] Current rotation:', currentRotation);
+    
+    // Store initial values
+    const elementRect = element.getBoundingClientRect();
+    const centerX = elementRect.left + elementRect.width / 2;
+    const centerY = elementRect.top + elementRect.height / 2;
+    
+    console.log('🔄 [ROTATE DEBUG] Element center:', { centerX, centerY });
+    console.log('🔄 [ROTATE DEBUG] Element rect:', elementRect);
+    
+    let isRotating = false;
+    
+    // Mouse down handler
+    function onMouseDown(e) {
+        console.log('🔄 [ROTATE DEBUG] Mouse down event triggered!');
+        console.log('🔄 [ROTATE DEBUG] Event:', e);
+        console.log('🔄 [ROTATE DEBUG] Event target:', e.target);
+        console.log('🔄 [ROTATE DEBUG] Event target tag:', e.target.tagName);
+        console.log('🔄 [ROTATE DEBUG] Event target classes:', e.target.className);
+        console.log('🔄 [ROTATE DEBUG] Event currentTarget:', e.currentTarget);
+        console.log('🔄 [ROTATE DEBUG] Event currentTarget classes:', e.currentTarget.className);
+        console.log('🔄 [ROTATE DEBUG] Mouse button:', e.button);
+        console.log('🔄 [ROTATE DEBUG] Mouse position:', e.clientX, e.clientY);
+        
+        // Check if the target is the rotate button OR any element inside it (like the icon)
+        const isRotateButton = e.target.classList.contains('rotate-btn') || 
+                              e.target.closest('.rotate-btn') ||
+                              e.currentTarget.classList.contains('rotate-btn');
+        
+        console.log('🔄 [ROTATE DEBUG] Is rotate button?', isRotateButton);
+        
+        if (isRotateButton) {
+            console.log('✅ [ROTATE DEBUG] Rotate button clicked, starting rotation');
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('🔄 [ROTATE DEBUG] Event prevented and stopped');
+            
+            isRotating = true;
+            console.log('🔄 [ROTATE DEBUG] isRotating set to true');
+            
+            // Add visual feedback
+            element.style.cursor = 'grabbing';
+            element.classList.add('rotating');
+            console.log('🔄 [ROTATE DEBUG] Added rotating class to element');
+            
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+            console.log('🔄 [ROTATE DEBUG] Added mousemove and mouseup listeners');
+        } else {
+            console.log('❌ [ROTATE DEBUG] Not a rotate button, ignoring click');
+        }
+    }
+    
+    // Mouse move handler
+    function onMouseMove(e) {
+        if (!isRotating) {
+            console.log('⚠️ [ROTATE DEBUG] Mouse move but not rotating');
+            return;
+        }
+        
+        e.preventDefault();
+        
+        // Calculate angle based on mouse position relative to element center
+        const mouseX = e.clientX;
+        const mouseY = e.clientY;
+        
+        const deltaX = mouseX - centerX;
+        const deltaY = mouseY - centerY;
+        
+        // Calculate angle in degrees
+        let angle = Math.atan2(deltaY, deltaX) * (180 / Math.PI);
+        
+        // Normalize angle to 0-360 range
+        angle = (angle + 360) % 360;
+        
+        console.log('🔄 [ROTATE DEBUG] Mouse at:', { mouseX, mouseY });
+        console.log('🔄 [ROTATE DEBUG] Delta:', { deltaX, deltaY });
+        console.log('🔄 [ROTATE DEBUG] Calculated angle:', angle.toFixed(1));
+        
+        // Store the rotation value
+        element.dataset.rotation = angle;
+        
+        // Apply the rotation using CSS transform
+        const currentTransform = element.style.transform || '';
+        
+        // Remove any existing rotation from transform
+        const transformWithoutRotation = currentTransform.replace(/rotate\([^)]*\)/g, '').trim();
+        
+        // Add the new rotation
+        const newTransform = transformWithoutRotation ? 
+            `${transformWithoutRotation} rotate(${angle}deg)` : 
+            `rotate(${angle}deg)`;
+        
+        element.style.transform = newTransform;
+        element.style.transformOrigin = 'center center';
+        
+        // Throttled console log (every 10th move to avoid spam)
+        if (Math.floor(angle) % 10 === 0) {
+            console.log(`🔄 [ROTATE DEBUG] Rotating to ${angle.toFixed(1)} degrees, transform: ${newTransform}`);
+        }
+    }
+    
+    // Mouse up handler
+    function onMouseUp(e) {
+        console.log('🔄 [ROTATE DEBUG] Mouse up event');
+        
+        if (!isRotating) {
+            console.log('⚠️ [ROTATE DEBUG] Mouse up but not rotating');
+            return;
+        }
+        
+        isRotating = false;
+        
+        // Remove visual feedback
+        element.style.cursor = '';
+        element.classList.remove('rotating');
+        console.log('🔄 [ROTATE DEBUG] Removed rotating class from element');
+        
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+        console.log('🔄 [ROTATE DEBUG] Removed event listeners');
+        
+        const finalRotation = element.dataset.rotation || 0;
+        console.log(`✅ [ROTATE DEBUG] Rotation completed at ${parseFloat(finalRotation).toFixed(1)} degrees`);
+        console.log('🔄 [ROTATE DEBUG] Final transform:', element.style.transform);
+    }
+    
+    // Add event listener to the rotate button
+    const rotateBtn = element.querySelector('.rotate-btn');
+    console.log('🔄 [ROTATE DEBUG] Looking for rotate button in element');
+    console.log('🔄 [ROTATE DEBUG] Found rotate button:', rotateBtn);
+    
+    if (rotateBtn) {
+        console.log('✅ [ROTATE DEBUG] Adding mousedown listener to rotate button');
+        console.log('🔄 [ROTATE DEBUG] Rotate button classes:', rotateBtn.className);
+        
+        // Remove any existing listeners first
+        rotateBtn.removeEventListener('mousedown', onMouseDown);
+        rotateBtn.addEventListener('mousedown', onMouseDown);
+        
+        // Also add listener to the icon inside the button
+        const rotateIcon = rotateBtn.querySelector('i, .fas');
+        if (rotateIcon) {
+            console.log('🔄 [ROTATE DEBUG] Found rotate icon, adding listener');
+            rotateIcon.removeEventListener('mousedown', onMouseDown);
+            rotateIcon.addEventListener('mousedown', onMouseDown);
+        }
+        
+        console.log('✅ [ROTATE DEBUG] Mousedown listener added successfully');
+    } else {
+        console.error('❌ [ROTATE DEBUG] No rotate button found in element!');
+        console.log('🔄 [ROTATE DEBUG] Element innerHTML:', element.innerHTML);
+        
+        // Try to find all buttons in element for debugging
+        const allButtons = element.querySelectorAll('button');
+        console.log('🔄 [ROTATE DEBUG] All buttons in element:', allButtons);
+        allButtons.forEach((btn, index) => {
+            console.log(`🔄 [ROTATE DEBUG] Button ${index}:`, btn.className, btn.innerHTML);
+        });
     }
 }
 
@@ -1799,6 +2069,12 @@ function addImageToCanvas(imageUrl, imageAlt, x, y) {
     removeBgBtn.className = 'remove-bg-btn';
     removeBgBtn.title = 'הסר רקע';
     
+    // Rotate button
+    const rotateBtn = document.createElement('button');
+    rotateBtn.innerHTML = '<i class="fas fa-redo"></i>';
+    rotateBtn.className = 'rotate-btn';
+    rotateBtn.title = 'סובב תמונה';
+    
     // Event listeners
     imageContainer.addEventListener('click', function() {
         // Remove selection from other elements
@@ -1827,6 +2103,16 @@ function addImageToCanvas(imageUrl, imageAlt, x, y) {
         removeImageBackground(img);
     });
     
+    rotateBtn.addEventListener('click', function(e) {
+        console.log('🔄 [ROTATE DEBUG] Rotate button click event for uploaded image');
+        console.log('🔄 [ROTATE DEBUG] Event:', e);
+        console.log('🔄 [ROTATE DEBUG] Button element:', this);
+        console.log('🔄 [ROTATE DEBUG] Parent element:', imageContainer);
+        
+        e.stopPropagation();
+        rotateElement(imageContainer, e);
+    });
+    
     // Make draggable
     makeDraggable(imageContainer);
     
@@ -1835,7 +2121,14 @@ function addImageToCanvas(imageUrl, imageAlt, x, y) {
     imageContainer.appendChild(resizeHandle);
     imageContainer.appendChild(deleteBtn);
     imageContainer.appendChild(removeBgBtn);
+    imageContainer.appendChild(rotateBtn);
     designCanvas.appendChild(imageContainer);
+    
+    console.log('🔄 [ROTATE DEBUG] Uploaded image element created with buttons');
+    console.log('🔄 [ROTATE DEBUG] Element classes:', imageContainer.className);
+    console.log('🔄 [ROTATE DEBUG] Rotate button added:', rotateBtn);
+    console.log('🔄 [ROTATE DEBUG] Rotate button classes:', rotateBtn.className);
+    console.log('🔄 [ROTATE DEBUG] Rotate button innerHTML:', rotateBtn.innerHTML);
     
     console.log('Image added to canvas:', imageUrl);
 }
@@ -2698,6 +2991,12 @@ function addFreepikImageToCanvas(imageUrl, imageTitle) {
         removeBgBtn.className = 'remove-bg-btn';
         removeBgBtn.title = 'הסר רקע';
         
+        // Rotate button
+        const rotateBtn = document.createElement('button');
+        rotateBtn.innerHTML = '<i class="fas fa-redo"></i>';
+        rotateBtn.className = 'rotate-btn';
+        rotateBtn.title = 'סובב תמונה';
+        
         // Add delete button event
         deleteBtn.addEventListener('click', function(e) {
             e.stopPropagation();
@@ -2717,6 +3016,18 @@ function addFreepikImageToCanvas(imageUrl, imageTitle) {
             removeImageBackground(img);
         });
         
+        // Add rotate button event
+        rotateBtn.addEventListener('click', function(e) {
+            console.log('🔄 [ROTATE DEBUG] Rotate button click event for Freepik image');
+            console.log('🔄 [ROTATE DEBUG] Event:', e);
+            console.log('🔄 [ROTATE DEBUG] Button element:', this);
+            console.log('🔄 [ROTATE DEBUG] Parent element:', imageElement);
+            
+            e.stopPropagation();
+            e.preventDefault();
+            rotateElement(imageElement, e);
+        });
+        
         // Handle image load errors
         img.onerror = function() {
             console.error('Failed to load image:', imageUrl);
@@ -2730,6 +3041,13 @@ function addFreepikImageToCanvas(imageUrl, imageTitle) {
         imageElement.appendChild(img);
         imageElement.appendChild(deleteBtn);
         imageElement.appendChild(removeBgBtn);
+        imageElement.appendChild(rotateBtn);
+        
+        console.log('🔄 [ROTATE DEBUG] Freepik image element created with buttons');
+        console.log('🔄 [ROTATE DEBUG] Element ID:', imageElement.id);
+        console.log('🔄 [ROTATE DEBUG] Rotate button added:', rotateBtn);
+        console.log('🔄 [ROTATE DEBUG] Rotate button classes:', rotateBtn.className);
+        console.log('🔄 [ROTATE DEBUG] Rotate button innerHTML:', rotateBtn.innerHTML);
         
         // Add drag functionality
         imageElement.addEventListener('mousedown', startDrag);

@@ -413,6 +413,20 @@ select.font-preview-select[data-current-font="Noto Sans Hebrew"] { font-family: 
     z-index: 1000;
 }
 
+/* Rotation mode styles */
+.design-element.rotating {
+    opacity: 0.9;
+    z-index: 1000;
+    outline: 2px dashed #ffc107;
+    outline-offset: 3px;
+}
+
+.design-element.rotating .rotate-btn {
+    background: #e0a800 !important;
+    transform: scale(1.2) !important;
+    box-shadow: 0 0 10px rgba(255, 193, 7, 0.5) !important;
+}
+
 
 .design-element .edit-image-btn {
     position: absolute;
@@ -447,11 +461,14 @@ select.font-preview-select[data-current-font="Noto Sans Hebrew"] { font-family: 
 .design-element .delete-btn,
 .design-element .edit-image-btn,
 .design-element .remove-bg-btn,
+.design-element .rotate-btn,
 .design-image .delete-btn,
 .design-image .remove-bg-btn,
+.design-image .rotate-btn,
 .design-image .resize-handle,
 .draggable-element .delete-btn,
-.draggable-element .remove-bg-btn {
+.draggable-element .remove-bg-btn,
+.draggable-element .rotate-btn {
     display: none !important;
     opacity: 0 !important;
     visibility: hidden !important;
@@ -461,11 +478,14 @@ select.font-preview-select[data-current-font="Noto Sans Hebrew"] { font-family: 
 .design-element.selected .delete-btn,
 .design-element.selected .edit-image-btn,
 .design-element.selected .remove-bg-btn,
+.design-element.selected .rotate-btn,
 .design-image.selected .delete-btn,
 .design-image.selected .remove-bg-btn,
+.design-image.selected .rotate-btn,
 .design-image.selected .resize-handle,
 .draggable-element.selected .delete-btn,
-.draggable-element.selected .remove-bg-btn {
+.draggable-element.selected .remove-bg-btn,
+.draggable-element.selected .rotate-btn {
     display: flex !important;
     opacity: 1 !important;
     visibility: visible !important;
@@ -475,11 +495,14 @@ select.font-preview-select[data-current-font="Noto Sans Hebrew"] { font-family: 
 .design-element:not(.selected) .delete-btn,
 .design-element:not(.selected) .edit-image-btn,
 .design-element:not(.selected) .remove-bg-btn,
+.design-element:not(.selected) .rotate-btn,
 .design-image:not(.selected) .delete-btn,
 .design-image:not(.selected) .remove-bg-btn,
+.design-image:not(.selected) .rotate-btn,
 .design-image:not(.selected) .resize-handle,
 .draggable-element:not(.selected) .delete-btn,
-.draggable-element:not(.selected) .remove-bg-btn {
+.draggable-element:not(.selected) .remove-bg-btn,
+.draggable-element:not(.selected) .rotate-btn {
     display: none !important;
     opacity: 0 !important;
     visibility: hidden !important;
@@ -489,11 +512,14 @@ select.font-preview-select[data-current-font="Noto Sans Hebrew"] { font-family: 
 .design-element:not(.selected):hover .delete-btn,
 .design-element:not(.selected):hover .edit-image-btn,
 .design-element:not(.selected):hover .remove-bg-btn,
+.design-element:not(.selected):hover .rotate-btn,
 .design-image:not(.selected):hover .delete-btn,
 .design-image:not(.selected):hover .remove-bg-btn,
+.design-image:not(.selected):hover .rotate-btn,
 .design-image:not(.selected):hover .resize-handle,
 .draggable-element:not(.selected):hover .delete-btn,
-.draggable-element:not(.selected):hover .remove-bg-btn {
+.draggable-element:not(.selected):hover .remove-bg-btn,
+.draggable-element:not(.selected):hover .rotate-btn {
     display: none !important;
     opacity: 0 !important;
     visibility: hidden !important;
@@ -1449,6 +1475,73 @@ span[contenteditable][style*="font-family"] {
 
 .remove-bg-btn:active {
     transform: scale(0.95) !important;
+}
+
+/* Rotate button styles */
+.rotate-btn {
+    position: absolute !important;
+    top: 0px !important;
+    right: 25px !important; /* בין הכפתור מחק לכפתור רקע */
+    width: 22px !important;
+    height: 22px !important;
+    background: #ffc107 !important;
+    color: #000 !important;
+    border: none !important;
+    border-radius: 50% !important;
+    cursor: pointer !important;
+    font-size: 8px !important;
+    font-weight: bold !important;
+    display: none !important; /* Hidden by default */
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 999 !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
+    transition: all 0.2s ease !important;
+    opacity: 0 !important; /* Hidden by default */
+    visibility: hidden !important; /* Hidden by default */
+    pointer-events: auto !important;
+    font-family: "Font Awesome 6 Free" !important;
+    font-weight: 900 !important;
+}
+
+.rotate-btn i,
+.rotate-btn .fas {
+    display: inline-block !important;
+    font-family: "Font Awesome 6 Free" !important;
+    font-weight: 900 !important;
+    color: #000 !important;
+    font-size: 10px !important;
+    line-height: 1 !important;
+}
+
+.rotate-btn:hover {
+    background: #e0a800 !important;
+    transform: scale(1.1) !important;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3) !important;
+}
+
+.rotate-btn:active {
+    transform: scale(0.95) !important;
+}
+
+/* Hide rotate button by default */
+.design-element:not(.selected) .rotate-btn,
+.design-image:not(.selected) .rotate-btn,
+.draggable-element:not(.selected) .rotate-btn {
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
+/* Show rotate button only when parent is selected */
+.design-element.selected .rotate-btn,
+.design-image.selected .rotate-btn,
+.draggable-element.selected .rotate-btn {
+    display: flex !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
 }
 
 /* Layers Panel Styles */
