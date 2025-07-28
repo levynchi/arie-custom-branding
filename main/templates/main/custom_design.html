@@ -4,7 +4,7 @@
 {% block title %}עיצוב אישי - אריה קאסטום מיתוגים{% endblock %}
 
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'main/css/custom_design.css' %}?v=20250727210000">
+    <link rel="stylesheet" href="{% static 'main/css/custom_design.css' %}?v=20250728110000">
 {% endblock %}
 
 {% block content %}
@@ -16,7 +16,7 @@
         <div class="header-left">
             <h4 class="mb-0">
                 <i class="fas fa-palette me-2"></i>
-              <script src="{% static 'main/js/custom_design.js' %}?v=20250727223000"></script>     עיצוב אישי
+                עיצוב אישי
             </h4>
         </div>
         <div class="header-center">
@@ -155,23 +155,32 @@
                             </div>
                             <div class="col-md-2">
                                 <select id="fontFamily" class="form-select form-select-sm font-preview-select">
-                                    <option value="Arial" style="font-family: Arial;">Arial</option>
-                                    <option value="Inter" style="font-family: Inter;">Inter - אינטר</option>
-                                    <option value="Poppins" style="font-family: Poppins;">Poppins - פופינס</option>
-                                    <option value="Heebo" style="font-family: Heebo;">Heebo - הבו</option>
-                                    <option value="Rubik" style="font-family: Rubik;">Rubik - רוביק</option>
-                                    <option value="Noto Sans Hebrew" style="font-family: 'Noto Sans Hebrew';">Noto Sans Hebrew - נוטו</option>
-                                    <option value="Frank Ruhl Libre" style="font-family: 'Frank Ruhl Libre';">Frank Ruhl Libre - פרנק</option>
-                                    <option value="Assistant" style="font-family: Assistant;">Assistant - אסיסטנט</option>
-                                    <option value="Open Sans" style="font-family: 'Open Sans';">Open Sans - אופן</option>
-                                    <option value="Varela Round" style="font-family: 'Varela Round';">Varela Round - ורלה</option>
-                                    <option value="Alef" style="font-family: Alef;">Alef - אל״ף</option>
-                                    <option value="Secular One" style="font-family: 'Secular One';">Secular One - חילוני</option>
-                                    <option value="Suez One" style="font-family: 'Suez One';">Suez One - סואץ</option>
-                                    <option value="Amatic SC" style="font-family: 'Amatic SC';">Amatic SC - אמטיק</option>
-                                    <option value="Miriam Libre" style="font-family: 'Miriam Libre';">Miriam Libre - מרים</option>
-                                    <option value="Tinos" style="font-family: Tinos;">Tinos - טינוס</option>
-                                    <option value="David CLM" style="font-family: 'David CLM';">David CLM - דוד</option>
+                                    <!-- פונטים עבריים -->
+                                    <optgroup label="📝 פונטים עבריים">
+                                        <option value="Heebo" style="font-family: Heebo;">הבו</option>
+                                        <option value="Rubik" style="font-family: Rubik;">רוביק</option>
+                                        <option value="Assistant" style="font-family: Assistant;">אסיסטנט</option>
+                                        <option value="Noto Sans Hebrew" style="font-family: 'Noto Sans Hebrew';">נוטו סאנס עברית</option>
+                                        <option value="Frank Ruhl Libre" style="font-family: 'Frank Ruhl Libre';">פרנק רול ליבר</option>
+                                        <option value="Alef" style="font-family: Alef;">אלף</option>
+                                        <option value="Secular One" style="font-family: 'Secular One';">חילוני</option>
+                                        <option value="Suez One" style="font-family: 'Suez One';">סואץ</option>
+                                        <option value="Miriam Libre" style="font-family: 'Miriam Libre';">מרים ליבר</option>
+                                        <option value="David CLM" style="font-family: 'David CLM';">דוד</option>
+                                    </optgroup>
+                                    <!-- פונטים אנגליים -->
+                                    <optgroup label="🔤 פונטים אנגליים">
+                                        <option value="Arial" style="font-family: Arial;">אריאל</option>
+                                        <option value="Inter" style="font-family: Inter;">אינטר</option>
+                                        <option value="Poppins" style="font-family: Poppins;">פופינס</option>
+                                        <option value="Open Sans" style="font-family: 'Open Sans';">אופן סאנס</option>
+                                        <option value="Varela Round" style="font-family: 'Varela Round';">ורלה עגול</option>
+                                        <option value="Amatic SC" style="font-family: 'Amatic SC';">אמטיק</option>
+                                        <option value="Tinos" style="font-family: Tinos;">טינוס</option>
+                                        <option value="Roboto" style="font-family: 'Roboto';">רובוטו</option>
+                                        <option value="Lato" style="font-family: 'Lato';">לאטו</option>
+                                        <option value="Montserrat" style="font-family: 'Montserrat';">מונטסרט</option>
+                                    </optgroup>
                                 </select>
                             </div>
                             <div class="col-md-1">
@@ -575,5 +584,5 @@ window.createCurvedText = createHebrewArchText;
 
 console.log('✅ Professional Arc Text System loaded successfully');
 </script>
-<script src="{% static 'main/js/custom_design.js' %}?v=20250727220000"></script>
+<script src="{% static 'main/js/custom_design.js' %}?v=20250728100000"></script>
 {% endblock %}
